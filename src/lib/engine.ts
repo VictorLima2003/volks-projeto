@@ -14,11 +14,10 @@ import {
   Regra,
   ResultadoTipo,
   RuleSet,
-  UberDriver,
 } from "./types";
 
 // --------------------------------------------------------------------------
-// Motor de fatos: junta base Uber + respostas em um único dicionário
+// Motor de fatos: respostas + retornos de hook num único dicionário
 // --------------------------------------------------------------------------
 /**
  * Dicionário de fatos.
@@ -41,7 +40,7 @@ export function montarFatos(
 }
 
 // --------------------------------------------------------------------------
-// Resolver caminho "uber.mesesUber" ou "resposta.modelo"
+// Resolver caminho como "credito.score" ou "resposta.modelo"
 // --------------------------------------------------------------------------
 function resolveFato(caminho: string, fatos: Fatos): unknown {
   if (!caminho) return undefined;
@@ -139,6 +138,25 @@ function texto(v: unknown): string {
   return String(v ?? "").toLowerCase();
 }
 
+/** Caminhos de fato usados por uma condição, incluindo grupos aninhados. */
+function caminhosDe(cond: Condicao): string[] {
+  if (cond.todas?.length) return cond.todas.flatMap(caminhosDe);
+  if (cond.qualquer?.length) return cond.qualquer.flatMap(caminhosDe);
+  return [cond.fato, cond.valorFato].filter((c): c is string => Boolean(c));
+}
+
+/**
+ * Snapshot dos fatos que a regra leu, para a decisão ficar explicável sem
+ * que o motor precise conhecer nome de campo nenhum.
+ */
+function fatosCitadosPor(cond: Condicao, fatos: Fatos): Record<string, unknown> {
+  const saida: Record<string, unknown> = {};
+  for (const caminho of caminhosDe(cond)) {
+    saida[caminho] = resolveFato(caminho, fatos);
+  }
+  return saida;
+}
+
 // --------------------------------------------------------------------------
 // Aplicar regras (por prioridade crescente → 1ª que casar vence)
 // --------------------------------------------------------------------------
@@ -156,11 +174,9 @@ export function decidir(
         regraAplicadaId: regra.id,
         ruleSetVersao: ruleSet.versao,
         decididoEm: new Date().toISOString(),
-        contexto: {
-          mesesUber: fatos.uber.mesesUber,
-          corridas: fatos.uber.corridas,
-          status: fatos.uber.status,
-        },
+        // Guarda os fatos que a regra realmente leu — é o que explica a
+        // decisão depois, sem o motor precisar saber que campos existem.
+        contexto: fatosCitadosPor(regra.condicao, fatos),
       };
     }
   }
@@ -183,7 +199,7 @@ export interface PassoTrace {
   resultado: ResultadoTipo;
   casou: boolean;
   vencedora: boolean;
-  /** "uber.mesesUber ≥ 6" com o valor real observado ao lado */
+  /** "credito.score ≥ 700" com o valor real observado ao lado */
   termos: TermoTrace[];
 }
 

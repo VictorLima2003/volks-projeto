@@ -1,24 +1,10 @@
 // ============================================================================
-// Domínio: Motor de Elegibilidade Uber × Volkswagen
+// Domínio: plataforma de pesquisas com decisão automatizada.
+// Nada aqui conhece um caso de negócio específico — o vocabulário do caso
+// vive em `seed.ts` e nos dados da campanha.
 // ============================================================================
 
 export type UUID = string;
-
-// --- Base Uber (contexto) --------------------------------------------------
-export type UberStatus = "ativo" | "inativo" | "suspenso";
-
-export interface UberDriver {
-  cpf: string;                 // "000.000.000-00"
-  nome: string;
-  cidade: string;
-  uf: string;
-  mesesUber: number;
-  corridas: number;
-  status: UberStatus;
-  rating: number;              // 0..5
-  telefone?: string;
-  email?: string;
-}
 
 // --- Campanha ---------------------------------------------------------------
 export type CampanhaStatus = "rascunho" | "ativa" | "pausada" | "encerrada";
@@ -206,7 +192,7 @@ export type Operador =
   | "falsy";
 
 export interface Condicao {
-  /** Caminho do fato: "resposta.modelo", "credito.score", "uber.corridas". */
+  /** Caminho do fato: "resposta.<campo>" ou "<prefixoDoHook>.<chave>". */
   fato: string;
   operador: Operador;
   /** Valor literal digitado pelo autor. */
