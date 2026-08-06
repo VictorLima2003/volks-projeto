@@ -1,0 +1,89 @@
+"use client";
+
+import { USUARIOS, USUARIO_PADRAO, Usuario, usuarioDoDocumento } from "@/lib/identidade";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
+export function SeletorUsuario() {
+  const router = useRouter();
+  // Começa no padrão para o HTML do servidor bater com o do cliente;
+  // o cookie real é lido logo após a montagem.
+  const [atual, setAtual] = useState<Usuario>(USUARIO_PADRAO);
+  const [aberto, setAberto] = useState(false);
+  const [trocando, setTrocando] = useState(false);
+
+  useEffect(() => {
+    setAtual(usuarioDoDocumento());
+  }, []);
+
+  async function trocar(id: string) {
+    setTrocando(true);
+    await fetch("/api/identidade", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ usuarioId: id }),
+    });
+    setAtual(usuarioDoDocumento());
+    setAberto(false);
+    setTrocando(false);
+    router.refresh();
+  }
+
+  const iniciais = atual.nome
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("");
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setAberto((a) => !a)}
+        className="flex items-center gap-2.5 h-11 pl-1.5 pr-3 rounded-full border hairline-strong hover:border-vw-deep transition"
+      >
+        <span className="w-8 h-8 rounded-full bg-vw-deep text-ink-0 text-xs font-bold flex items-center justify-center">
+          {iniciais}
+        </span>
+        <span className="text-sm font-semibold hidden lg:inline">{atual.nome}</span>
+        <span className="text-ink-600 text-xs" aria-hidden="true">▾</span>
+      </button>
+
+      {aberto && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setAberto(false)} />
+          <div className="absolute right-0 top-full mt-2 z-50 w-80 bg-ink-0 border hairline-strong rounded-md shadow-lift p-2">
+            <div className="px-3 py-2 text-xs font-bold uppercase tracking-widest text-ink-600">
+              Entrar como
+            </div>
+            {USUARIOS.map((u) => (
+              <button
+                key={u.id}
+                type="button"
+                disabled={trocando}
+                onClick={() => trocar(u.id)}
+                className={
+                  "w-full text-left px-3 py-2.5 rounded-sm transition disabled:opacity-50 " +
+                  (u.id === atual.id ? "bg-vw-deep/8" : "hover:bg-ink-100")
+                }
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-base font-medium">{u.nome}</span>
+                  {u.id === atual.id && (
+                    <span className="text-xs font-bold uppercase text-vw-deep">atual</span>
+                  )}
+                </div>
+                <div className="text-xs text-ink-600 mt-0.5">
+                  {u.area} · {u.papeis.includes("aprova") ? "pode aprovar" : "propõe apenas"}
+                </div>
+              </button>
+            ))}
+            <p className="px-3 py-2 text-xs text-ink-600 border-t hairline mt-2">
+              Protótipo sem login. Troque de pessoa para ver os dois lados da aprovação.
+            </p>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

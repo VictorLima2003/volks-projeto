@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  /* Linhas do sistema — derivadas da paleta VW */
+  --line: #DFE4E8;
+  --line-strong: #B9C2CB;
+}
+
+html, body {
+  background: #fff;
+  color: #1B2236;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: #001E50;
+  color: #fff;
+}
+
+/* Títulos: sempre navy VW, nunca coloridos */
+h1, h2, h3 {
+  color: #1B2236;
+}
+
+/*
+ * Títulos em traço fino, como a Volkswagen usa (peso 200 no site da marca).
+ * Em corpo grande, peso leve lê como sofisticação; peso alto lê como ruído.
+ * O tracking negativo fecha o espaçamento que a fonte leve abre naturalmente.
+ */
+.display {
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+/* Em corpo menor o peso precisa subir um degrau para não perder presença. */
+.display-sm {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.hairline {
+  border-color: var(--line);
+}
+
+.hairline-strong {
+  border-color: var(--line-strong);
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 0.94em;
+}
+
+/* Grade ambiente — linhas marcadas */
+.grid-bg {
+  background-image: linear-gradient(var(--line) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 56px 56px;
+  background-position: -1px -1px;
+}
+
+/*
+ * Transição entre passos do formulário.
+ * O sentido do deslize comunica a direção: avançar empurra para a esquerda,
+ * voltar devolve para a direita. Curva de saída rápida, entrada mais suave.
+ */
+@keyframes passo-entra-frente {
+  from { opacity: 0; transform: translate3d(28px, 0, 0); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes passo-sai-frente {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translate3d(-28px, 0, 0); }
+}
+@keyframes passo-entra-tras {
+  from { opacity: 0; transform: translate3d(-28px, 0, 0); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes passo-sai-tras {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translate3d(28px, 0, 0); }
+}
+
+.passo-entra-frente { animation: passo-entra-frente 260ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.passo-sai-frente   { animation: passo-sai-frente 170ms cubic-bezier(0.4, 0, 1, 1) both; }
+.passo-entra-tras   { animation: passo-entra-tras 260ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.passo-sai-tras     { animation: passo-sai-tras 170ms cubic-bezier(0.4, 0, 1, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .passo-entra-frente,
+  .passo-sai-frente,
+  .passo-entra-tras,
+  .passo-sai-tras {
+    animation: none;
+  }
+}
+
+/* Faixa VW: filete de marca no topo de blocos-chave */
+.vw-rule {
+  border-top: 3px solid #001E50;
+}
