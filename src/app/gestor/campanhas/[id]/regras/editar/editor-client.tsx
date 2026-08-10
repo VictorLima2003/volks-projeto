@@ -4,6 +4,7 @@ import { Badge, Button, Card, Input, Label, Select, Textarea } from "@/component
 import { GrupoDeFatos, resultadoLabel } from "@/lib/engine";
 import { EditorCondicao } from "@/components/EditorCondicao";
 import { Condicao, Operador, Regra, ResultadoTipo } from "@/lib/types";
+import { useAviso } from "@/components/Avisos";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -72,12 +73,12 @@ export function EditorRegras({
   grupos: GrupoDeFatos[];
 }) {
   const router = useRouter();
+  const { avisar } = useAviso();
   const [regras, setRegras] = useState<Regra[]>(
     [...regrasIniciais].sort((a, b) => a.prioridade - b.prioridade),
   );
   const [descricao, setDescricao] = useState("");
   const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
 
   function patch(id: string, campo: keyof Regra, valor: unknown) {
     setRegras((rs) => rs.map((r) => (r.id === id ? { ...r, [campo]: valor } : r)));
@@ -128,7 +129,6 @@ export function EditorRegras({
 
   async function publicar() {
     setSalvando(true);
-    setErro(null);
     const res = await fetch("/api/rulesets", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -137,7 +137,7 @@ export function EditorRegras({
     const json = await res.json();
     setSalvando(false);
     if (!res.ok) {
-      setErro(json.detalhe ?? json.erro ?? "Falha ao publicar.");
+      avisar(json.detalhe ?? json.erro ?? "Falha ao publicar.", "stop");
       return;
     }
     router.push("/gestor/aprovacoes");
@@ -249,7 +249,7 @@ export function EditorRegras({
                   if (orfaos.length === 0) return null;
                   return (
                     <div className="border border-signal-warn/45 bg-signal-warn/10 rounded-sm p-4">
-                      <div className="text-xs font-bold uppercase tracking-widest text-signal-warn mb-1.5">
+                      <div className="text-sm font-semibold text-signal-warn mb-1.5">
                         Texto fora de sincronia
                       </div>
                       <p className="text-sm text-ink-800">
@@ -273,7 +273,7 @@ export function EditorRegras({
       {/* ------------- Publicação ------------- */}
       <aside className="space-y-5 lg:sticky lg:top-28">
         <Card>
-          <h3 className="text-xs font-bold uppercase tracking-widest text-ink-600">Enviar para aprovação</h3>
+          <h3 className="text-sm font-semibold">Enviar para aprovação</h3>
           <div className="mt-4">
             <div className="flex items-baseline gap-2">
               <span className="text-sm text-ink-600">v{versaoAtual}</span>
@@ -299,11 +299,6 @@ export function EditorRegras({
             </p>
           </div>
 
-          {erro && (
-            <div className="mt-4 border border-signal-stop/45 bg-signal-stop/10 rounded-sm p-3 text-sm text-signal-stop">
-              {erro}
-            </div>
-          )}
 
           <Button onClick={publicar} disabled={salvando || regras.length === 0} className="w-full mt-5">
             {salvando ? "Enviando..." : `Propor v${versaoAtual + 1}`}
@@ -314,7 +309,7 @@ export function EditorRegras({
         </Card>
 
         <Card>
-          <h3 className="text-xs font-bold uppercase tracking-widest text-ink-600">Ordem importa</h3>
+          <h3 className="text-sm font-semibold">Ordem importa</h3>
           <p className="text-sm text-ink-700 mt-3">
             As regras são avaliadas de cima para baixo e a <strong>primeira que casar vence</strong>.
             Coloque as exceções acima das regras gerais.

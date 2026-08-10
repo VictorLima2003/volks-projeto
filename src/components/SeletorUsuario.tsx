@@ -1,10 +1,10 @@
 "use client";
 
-import { USUARIOS, USUARIO_PADRAO, Usuario, usuarioDoDocumento } from "@/lib/identidade";
+import { papelLegivel, USUARIOS, USUARIO_PADRAO, Usuario, usuarioDoDocumento } from "@/lib/identidade";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export function SeletorUsuario() {
+export function SeletorUsuario({ trocarDePessoa = true }: { trocarDePessoa?: boolean }) {
   const router = useRouter();
   // Começa no padrão para o HTML do servidor bater com o do cliente;
   // o cookie real é lido logo após a montagem.
@@ -27,6 +27,22 @@ export function SeletorUsuario() {
     setAberto(false);
     setTrocando(false);
     router.refresh();
+  }
+
+  /*
+   * Não há login para desfazer: o protótipo guarda quem você é num cookie. Sair
+   * apaga esse cookie e devolve à porta de entrada, que é a coisa mais próxima
+   * de sair que existe aqui — e é onde a pessoa escolheria de novo a área.
+   */
+  async function sair() {
+    setTrocando(true);
+    await fetch("/api/identidade", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ usuarioId: null }),
+    });
+    setAberto(false);
+    router.push("/");
   }
 
   const iniciais = atual.nome
@@ -53,10 +69,15 @@ export function SeletorUsuario() {
         <>
           <div className="fixed inset-0 z-40" onClick={() => setAberto(false)} />
           <div className="absolute right-0 top-full mt-2 z-50 w-80 bg-ink-0 border hairline-strong rounded-md shadow-lift p-2">
-            <div className="px-3 py-2 text-xs font-bold uppercase tracking-widest text-ink-600">
-              Entrar como
-            </div>
-            {USUARIOS.map((u) => (
+            {/*
+             * A lista de pessoas só existe onde trocar de pessoa faz parte do
+             * trabalho — no gestor, para ver os dois lados da aprovação. No
+             * vendedor, quem está logado é o vendedor e o menu tem uma coisa só.
+             */}
+            {trocarDePessoa && (
+              <div className="px-3 py-2 text-sm font-semibold text-ink-600">Entrar como</div>
+            )}
+            {trocarDePessoa && USUARIOS.map((u) => (
               <button
                 key={u.id}
                 type="button"
@@ -70,17 +91,29 @@ export function SeletorUsuario() {
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-base font-medium">{u.nome}</span>
                   {u.id === atual.id && (
-                    <span className="text-xs font-bold uppercase text-vw-deep">atual</span>
+                    <span className="text-xs font-semibold text-vw-deep">atual</span>
                   )}
                 </div>
                 <div className="text-xs text-ink-600 mt-0.5">
-                  {u.area} · {u.papeis.includes("aprova") ? "pode aprovar" : "propõe apenas"}
+                  {u.area} · {papelLegivel(u)}
                 </div>
               </button>
             ))}
-            <p className="px-3 py-2 text-xs text-ink-600 border-t hairline mt-2">
-              Protótipo sem login. Troque de pessoa para ver os dois lados da aprovação.
-            </p>
+            {trocarDePessoa && (
+              <p className="px-3 py-2 text-xs text-ink-600 border-t hairline mt-2">
+                Protótipo sem login. Troque de pessoa para ver os dois lados da aprovação.
+              </p>
+            )}
+
+            <button
+              type="button"
+              disabled={trocando}
+              onClick={sair}
+              className="w-full text-left px-3 py-2.5 rounded-sm text-base font-medium
+                         text-signal-stop hover:bg-signal-stop/[0.07] transition disabled:opacity-50"
+            >
+              Sair
+            </button>
           </div>
         </>
       )}

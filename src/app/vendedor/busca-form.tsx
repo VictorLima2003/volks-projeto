@@ -1,13 +1,15 @@
 "use client";
 
-import { Button, Input, Label } from "@/components/ui";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useTransicao } from "@/components/Transicao";
+import { Button, Input, Label, SetaCta } from "@/components/ui";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 
 function Inner() {
-  const router = useRouter();
+  const { irPara } = useTransicao();
   const sp = useSearchParams();
   const [cpf, setCpf] = useState(sp.get("cpf") ?? "");
+  const [indo, setIndo] = useState(false);
 
   function normalizeCpf(v: string) {
     const digits = v.replace(/\D/g, "").slice(0, 11);
@@ -21,8 +23,11 @@ function Inner() {
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (!cpf) return;
-        router.push(`/vendedor/consulta?cpf=${encodeURIComponent(cpf)}`);
+        if (!cpf || indo) return;
+        // `irPara` e não `router.push`: a cortina do layout cobre a troca, e a
+        // marca desenha por cima dela até o veredito estar na tela.
+        setIndo(true);
+        irPara(`/vendedor/consulta?cpf=${encodeURIComponent(cpf)}`);
       }}
       className="flex items-end gap-3"
     >
@@ -37,7 +42,13 @@ function Inner() {
           required
         />
       </div>
-      <Button type="submit" variant="go">Consultar</Button>
+      {/* Mesmo botão da tela do motorista: pílula navy com a seta que corre no
+          hover. Era verde `go`, que na nossa escala quer dizer "aprovado" — cor
+          de resultado num botão que só faz a pergunta. */}
+      <Button type="submit" disabled={indo}>
+        Consultar
+        <SetaCta />
+      </Button>
     </form>
   );
 }

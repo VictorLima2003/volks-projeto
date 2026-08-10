@@ -1,5 +1,6 @@
 "use client";
 
+import { useAviso } from "@/components/Avisos";
 import { Abas } from "@/components/Abas";
 import { Badge, Button } from "@/components/ui";
 import { contarBlocos } from "@/lib/engine";
@@ -40,8 +41,10 @@ export function ConstrutorPesquisa({
   const [aberto, setAberto] = useState<string | null>(null);
   const [arrastado, setArrastado] = useState<string | null>(null);
   const [salvando, setSalvando] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [erroApi, setErroApi] = useState<string | null>(null);
+  const { avisar } = useAviso();
+  /* Só o fato de ter salvo, para o simulador saber que pode rodar. A frase em si
+     virou aviso — feedback de ação não mora dentro do formulário. */
+  const [salvo, setSalvo] = useState(false);
 
   const problemas = useMemo(() => validarPesquisa(blocos), [blocos]);
   const bloqueado = temErro(problemas);
@@ -50,7 +53,7 @@ export function ConstrutorPesquisa({
 
   function mudar(novos: Bloco[]) {
     setBlocos(novos);
-    setMsg(null);
+    setSalvo(false);
   }
 
   function adicionarPergunta(destino: Destino) {
@@ -123,8 +126,6 @@ export function ConstrutorPesquisa({
 
   async function salvar() {
     setSalvando(true);
-    setErroApi(null);
-    setMsg(null);
     const res = await fetch("/api/pesquisa", {
       method: "PUT",
       headers: { "content-type": "application/json" },
@@ -133,10 +134,11 @@ export function ConstrutorPesquisa({
     const json = await res.json();
     setSalvando(false);
     if (!res.ok) {
-      setErroApi(json.detalhe ?? json.problemas?.[0]?.mensagem ?? json.erro ?? "Falha ao salvar.");
+      avisar(json.detalhe ?? json.problemas?.[0]?.mensagem ?? json.erro ?? "Falha ao salvar.", "stop");
       return;
     }
-    setMsg("Pesquisa salva.");
+    setSalvo(true);
+    avisar("Pesquisa salva.", "go");
   }
 
   const acoes = { adicionarPergunta, adicionarCondicional, adicionarConsulta, adicionarFeedback };
@@ -158,7 +160,6 @@ export function ConstrutorPesquisa({
                   {erros.length} erro(s) a corrigir
                 </span>
               )}
-              {msg && <span className="text-sm text-signal-go font-medium">{msg}</span>}
               <Button onClick={salvar} disabled={salvando || bloqueado || !podeEditar}>
                 {salvando ? "Salvando..." : "Salvar pesquisa"}
               </Button>
@@ -175,11 +176,6 @@ export function ConstrutorPesquisa({
                 <strong>Somente leitura.</strong> {nomeUsuario} não edita pesquisas — troque para
                 alguém de Produto ou Marketing no canto superior direito.
               </p>
-            </div>
-          )}
-          {erroApi && (
-            <div className="border border-signal-stop/45 bg-signal-stop/10 rounded-md p-5 mb-6 text-base text-signal-stop">
-              {erroApi}
             </div>
           )}
           {problemas
@@ -213,7 +209,7 @@ export function ConstrutorPesquisa({
           <BarraDeAdicao acoes={acoes} destino={null} hooks={hooks} />
         </>
       ) : (
-        <SimuladorFluxo campanhaId={campanhaId} blocos={blocos} salvo={msg !== null} />
+        <SimuladorFluxo campanhaId={campanhaId} blocos={blocos} salvo={salvo} />
       )}
     </div>
   );
@@ -262,7 +258,7 @@ function BarraDeAdicao({
   }
 
   return (
-    <div className="mt-4 border-2 border-dashed hairline-strong rounded-md p-4 flex flex-wrap items-center gap-3">
+    <div className="mt-4 border border-dashed hairline-strong rounded-md p-4 flex flex-wrap items-center gap-3">
       <span className="text-sm text-ink-600 mr-1">Adicionar ao fim:</span>
       {itens.map((i) => (
         <Button key={i.rotulo} variant="secondary" onClick={i.fn} className="h-10 px-5 text-sm">
@@ -369,7 +365,7 @@ function ListaBlocos({
             }}
             onDragEnd={() => setArrastado(null)}
             className={
-              "rounded-md border-2 transition-all " +
+              "rounded-md border transition " +
               (arrastado === b.id ? "opacity-40 " : "") +
               (estaAberto
                 ? "border-vw-deep shadow-lift bg-ink-0 "
@@ -382,7 +378,7 @@ function ListaBlocos({
             <div
               className={
                 "flex items-center gap-3 px-4 py-3 " +
-                (estaAberto ? "bg-vw-deep/[0.06] rounded-t-[4px] border-b-2 border-vw-deep/20" : "")
+                (estaAberto ? "bg-vw-deep/[0.06] rounded-t-[4px] border-b border-vw-deep/20" : "")
               }
             >
               {/* A alça some quando o item está aberto: nesse estado ele não
@@ -519,7 +515,7 @@ function ListaBlocos({
                       (ramo === "entao" ? "border-signal-go/50" : "border-ink-400")
                     }
                   >
-                    <div className="text-xs font-bold uppercase tracking-widest text-ink-600 mb-2.5">
+                    <div className="text-sm font-semibold text-ink-600 mb-2.5">
                       {ramo === "entao" ? "Então" : "Senão"}
                     </div>
 

@@ -1,5 +1,6 @@
 import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, Stat, Table, TD, TH, THead, TR } from "@/components/ui";
+import { dataPorExtenso } from "@/lib/painel";
 import { listarSessoes, listarCampanhas } from "@/lib/store";
 import Link from "next/link";
 
@@ -21,7 +22,11 @@ export default function Central() {
   const abandonadas = sessoes.filter((s) => s.status === "em_andamento");
 
   return (
-    <ShellGestor secao="central" title="Central de exceções" crumbs={[{ label: "Gestor", href: "/gestor" }, { label: "Central" }]}>
+    <ShellGestor
+      secao="central"
+      title="Central de exceções"
+      data={dataPorExtenso()}
+    >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
         <Stat label="Na fila de análise" value={excecoes.length} tone="warn" />
         <Stat label="CPF fora da base" value={semCpfNaBase.length} tone="stop" />
@@ -101,7 +106,7 @@ export default function Central() {
       )}
 
       <div className="mt-12 border hairline rounded-md p-7 bg-ink-100">
-        <div className="text-sm font-semibold uppercase tracking-wide text-ink-600 mb-2">O que a central resolve</div>
+        <div className="text-sm font-semibold text-ink-600 mb-2">O que a central resolve</div>
         <div className="grid md:grid-cols-3 gap-6 mt-4 text-sm text-ink-700">
           <div>
             <div className="text-ink-900 font-medium mb-1">CPF fora da base</div>

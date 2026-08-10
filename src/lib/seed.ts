@@ -48,6 +48,51 @@ const blocosPadrao: Bloco[] = [
     obrigatoria: true,
   },
   {
+    /*
+     * Recusar encerra o caminho aqui.
+     *
+     * Antes deste bloco, responder "Não autorizo" não fazia nada: o fluxo
+     * seguia, puxava crédito, perguntava modelo e concessionária, e no fim
+     * entregava um veredito calculado com os dados que a pessoa acabara de
+     * recusar. O campo era gravado e ignorado.
+     *
+     * A condição é `existe` **e** `é falso`, e não só `é falso`.
+     *
+     * Só `falsy` também casa com "ainda não respondeu", e aí o percurso inteiro
+     * era truncado: `passosVisiveis` para no primeiro feedback que encontra, e
+     * este feedback aparecia já na pergunta do consentimento. A régua dizia
+     * "Passo 2 de 2" — que parece a última — e depois pulava para 5 assim que a
+     * pessoa autorizava. Com `existe`, antes de responder o ramo é o vazio e o
+     * caminho segue inteiro.
+     *
+     * Isto é conveniência de fluxo, não a trava: a decisão real é recusada pela
+     * regra `r_sem_consentimento` no RuleSet, no servidor. Lá o `falsy` sozinho
+     * é o certo, porque ausência de autorização é ausência de autorização.
+     */
+    id: "cond_sem_consentimento",
+    bloco: "condicional",
+    rotulo: "Não autorizou a consulta",
+    condicao: {
+      todas: [
+        { fato: "resposta.consentimento", operador: "exists" },
+        { fato: "resposta.consentimento", operador: "falsy" },
+      ],
+      fato: "",
+      operador: "truthy",
+    },
+    entao: [
+      {
+        id: "fim_sem_consentimento",
+        bloco: "feedback",
+        tipo: "info",
+        titulo: "Sem a autorização, não temos como consultar",
+        mensagem:
+          "Nada foi consultado e nada fica guardado. Você pode voltar e autorizar quando quiser, ou falar com uma concessionária Volkswagen, que confere sua condição no balcão.",
+      },
+    ],
+    senao: [],
+  },
+  {
     // Gatilho: com o CPF em mãos, puxa a base de crédito antes de seguir.
     id: "consulta_credito",
     bloco: "consulta",
@@ -151,6 +196,17 @@ const hookBaseParceiro: Hook = {
   prefixo: "uber",
   parametros: [{ nome: "documento", rotulo: "Documento", descricao: "CPF do respondente" }],
   mensagemCarregando: "Localizando seu cadastro...",
+  // Como cada fato deve ser escrito na tela. A chave é identificador de código
+  // e não leva acento; o rótulo, sim.
+  rotulos: {
+    nome: "Nome",
+    cidade: "Cidade",
+    uf: "UF",
+    mesesUber: "Meses na Uber",
+    corridas: "Corridas concluídas",
+    status: "Status da conta",
+    rating: "Avaliação",
+  },
   anexos: [
     {
       nome: "parceiros.csv",
@@ -203,6 +259,11 @@ const hookCredito: Hook = {
     { nome: "documento", rotulo: "Documento", descricao: "CPF ou CNPJ do respondente" },
   ],
   mensagemCarregando: "Consultando restrições de crédito...",
+  rotulos: {
+    score: "Score",
+    temRestricao: "Tem restrição",
+    limite: "Limite pré-aprovado",
+  },
   anexos: [
     {
       nome: "restricoes.csv",
@@ -277,6 +338,23 @@ const hookApiParceira: Hook = {
 // RuleSet padrão v1: 6 meses + 500 corridas
 // --------------------------------------------------------------------------
 const regrasV1: Regra[] = [
+  {
+    /*
+     * Primeira de todas, e por isso prioridade 5.
+     *
+     * A tela já encerra a jornada de quem recusa, mas a tela não é trava: um
+     * POST em `/api/decidir` sem passar pelo formulário chegaria aqui com o
+     * consentimento vazio, e sem esta regra o motor decidiria alegremente com
+     * dados que ninguém autorizou a usar. Trava de negócio mora no servidor.
+     */
+    id: "r_sem_consentimento",
+    nome: "Sem autorização para consultar",
+    condicao: { fato: "resposta.consentimento", operador: "falsy" },
+    resultado: "nao_elegivel",
+    motivo: "Sem autorização para consultar os dados de atividade, não dá para avaliar a elegibilidade.",
+    proximaAcao: "Nenhuma. Só a pessoa pode autorizar, e nada é consultado até lá.",
+    prioridade: 5,
+  },
   {
     id: "r_erro_cpf",
     nome: "CPF não localizado na Uber",
@@ -384,14 +462,14 @@ const ruleSetV1: RuleSet = {
   id: "rs_v1",
   versao: 1,
   criadoEm: "2026-01-15T10:00:00Z",
-  criadoPor: "ana.produto@wolks",
+  criadoPor: "ana.produto@volkswagen",
   descricao: "Regra base Volkswagen × Uber: 6 meses + 500 corridas + conta ativa.",
   regras: regrasV1,
   ativo: true,
   status: "ativo",
-  propostoPor: "ana.produto@wolks",
+  propostoPor: "ana.produto@volkswagen",
   propostaEm: "2026-01-14T16:30:00Z",
-  aprovadoPor: "marina.compliance@wolks",
+  aprovadoPor: "marina.compliance@volkswagen",
   aprovadoEm: "2026-01-15T10:00:00Z",
 };
 
@@ -447,7 +525,7 @@ export const PEDIDOS_SEED: Pedido[] = [
     id: "ped_001",
     campanhaId: "camp_tcross_sp",
     cpf: "111.222.333-44",
-    vendedor: "Ana P. (VW Barra Funda)",
+    vendedor: "julia.barrafunda@volkswagen",
     concessionaria: "VW Barra Funda (SP)",
     modelo: "T-Cross",
     criadoEm: "2026-08-01T12:00:00Z",
@@ -457,7 +535,7 @@ export const PEDIDOS_SEED: Pedido[] = [
     id: "ped_002",
     campanhaId: "camp_tcross_sp",
     cpf: "444.555.666-77",
-    vendedor: "Ana P. (VW Barra Funda)",
+    vendedor: "julia.barrafunda@volkswagen",
     concessionaria: "VW Barra Funda (SP)",
     modelo: "T-Cross",
     criadoEm: "2026-08-02T09:30:00Z",
@@ -468,7 +546,7 @@ export const PEDIDOS_SEED: Pedido[] = [
     id: "ped_003",
     campanhaId: "camp_polo_rj",
     cpf: "333.444.555-66",
-    vendedor: "Bruno L. (VW Barra RJ)",
+    vendedor: "bruno.barrarj@volkswagen",
     concessionaria: "VW Barra (RJ)",
     modelo: "Polo Track",
     criadoEm: "2026-08-03T14:15:00Z",
@@ -484,6 +562,14 @@ export const SESSOES_SEED: SessaoMotorista[] = [
     iniciadaEm: "2026-08-01T11:40:00Z",
     atualizadaEm: "2026-08-01T11:52:00Z",
     status: "concluida",
+    // Os fatos que os hooks devolveram nesta jornada. Sem eles a consulta do
+    // vendedor dizia "nenhuma consulta retornou dados" logo abaixo de uma tela
+    // afirmando que o motorista atende aos critérios — o resultado ficava
+    // gravado e a prova dele não.
+    externos: {
+      uber: { encontrado: true, nome: "Marcos Andrade", cidade: "São Paulo", uf: "SP", mesesUber: 14, corridas: 2380, status: "ativo", rating: 4.92 },
+      credito: { encontrado: true, score: 842, temRestricao: false, limite: 68000 },
+    },
     respostas: { consentimento: true, modelo: "T-Cross", concessionaria: "VW Barra Funda (SP)", canalContato: "WhatsApp" },
     resultado: {
       tipo: "elegivel",
@@ -503,6 +589,10 @@ export const SESSOES_SEED: SessaoMotorista[] = [
     iniciadaEm: "2026-08-02T09:10:00Z",
     atualizadaEm: "2026-08-02T09:20:00Z",
     status: "concluida",
+    externos: {
+      uber: { encontrado: true, nome: "Carla Mendes", cidade: "Belo Horizonte", uf: "MG", mesesUber: 4, corridas: 320, status: "ativo", rating: 4.71 },
+      credito: { encontrado: true, score: 530, temRestricao: true, limite: 0 },
+    },
     respostas: { consentimento: true },
     resultado: {
       tipo: "nao_elegivel",
@@ -522,6 +612,10 @@ export const SESSOES_SEED: SessaoMotorista[] = [
     iniciadaEm: "2026-08-03T13:50:00Z",
     atualizadaEm: "2026-08-03T14:02:00Z",
     status: "concluida",
+    externos: {
+      uber: { encontrado: true, nome: "Rafael Nogueira", cidade: "Rio de Janeiro", uf: "RJ", mesesUber: 22, corridas: 5400, status: "ativo", rating: 4.95 },
+      credito: { encontrado: true, score: 905, temRestricao: false, limite: 95000 },
+    },
     respostas: { consentimento: true, modelo: "Polo Track", concessionaria: "VW Barra (RJ)", canalContato: "Telefone" },
     resultado: {
       tipo: "elegivel",

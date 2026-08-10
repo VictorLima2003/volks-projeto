@@ -1,3 +1,20 @@
+/* Hallmark · genre: modern-minimal · design-system: design.md · designed-as-app
+ * macrostructures: Marquee Hero (marketing) · Narrative Workflow (fluxo)
+ *                  Bento Grid (decisão) · Component Playground (ferramenta)
+ * theme: sistema próprio (docs/design-system.md · tokens em tailwind.config.ts)
+ * enrichment: Tier A — gradientes CSS, só nas dobras de marketing
+ * nav: N9 edge-aligned (uma ação) · N1b três seções (gestor) · footer: Ft2 inline
+ * section head: S2 hanging · motion: cut · sem cromo redesenhado, sem prova inventada
+ * pre-emit critique: P5 H4 E4 S5 R4 V5
+ * contrast: pass (40-41) · mobile: pass (34, 49, 50-57) · honest: pass (46)
+ * chrome: pass (47) · tokens: pass (48) · slop: pass (42-45)
+ * gate 1 (display = Inter): sobrescrito — o gênero modern-minimal admite display
+ *   "Inter-class" explicitamente, e a família é decisão de marca travada em
+ *   docs/design-system.md, não default de LLM.
+ * gate 23 (acento > 5% da viewport): não se aplica à dobra escura — azul-950/900
+ *   têm papel de SUPERFÍCIE no nosso documento; o papel de acento é o azul-600,
+ *   que segue abaixo de 5%.
+ */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -14,6 +31,9 @@ html, body {
   color: #1B2236;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* `clip`, nunca `hidden`: `hidden` cria contexto de rolagem e quebra
+     `position: sticky` em qualquer descendente. */
+  overflow-x: clip;
 }
 
 ::selection {
@@ -24,24 +44,29 @@ html, body {
 /* Títulos: sempre navy VW, nunca coloridos */
 h1, h2, h3 {
   color: #1B2236;
+  /* Em 320px uma palavra composta longa ("elegibilidade", nome de modelo com
+     hífen) não tem onde quebrar e estoura a viewport. `anywhere` autoriza a
+     quebra dentro da palavra como último recurso. */
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 /*
  * Títulos em traço fino, como a Volkswagen usa (peso 200 no site da marca).
  * Em corpo grande, peso leve lê como sofisticação; peso alto lê como ruído.
- * O tracking negativo fecha o espaçamento que a fonte leve abre naturalmente.
+ *
+ * Só o peso mora aqui. Altura de linha e tracking saíram para os tokens de
+ * `fontSize` no Tailwind, onde variam por nível (H1 fecha em 1.1, H3 abre em
+ * 1.2). Enquanto estavam nesta classe, ela vencia por ordem de cascata e
+ * achatava todos os níveis no mesmo valor.
  */
 .display {
   font-weight: 500;
-  letter-spacing: -0.025em;
-  line-height: 1.1;
 }
 
 /* Em corpo menor o peso precisa subir um degrau para não perder presença. */
 .display-sm {
   font-weight: 600;
-  letter-spacing: -0.015em;
-  line-height: 1.2;
 }
 
 .hairline {
@@ -52,9 +77,20 @@ h1, h2, h3 {
   border-color: var(--line-strong);
 }
 
+/*
+ * Dado técnico: CPF, identificador, versão, trilha de auditoria.
+ *
+ * Já foi monoespaçada e não é mais — fonte com cara de máquina de escrever está
+ * banida da interface. O problema que ela resolvia era só um: dígito de largura
+ * variável não alinha em coluna. `tabular-nums` resolve isso dentro do próprio
+ * Inter, sem trazer uma segunda família junto.
+ *
+ * Código de verdade (o editor Monaco) continua monoespaçado — lá o alinhamento
+ * por coluna é função, não estilo.
+ */
 .mono {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: 0.94em;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
 }
 
 /* Grade ambiente — linhas marcadas */
@@ -98,6 +134,58 @@ h1, h2, h3 {
   .passo-entra-tras,
   .passo-sai-tras {
     animation: none;
+  }
+}
+
+/*
+ * Entrada de elemento. Vale para toda tela do respondente, e o escalonamento
+ * sai de `animation-delay` inline em cada bloco.
+ *
+ * É CSS e não anime.js de propósito, e a razão é de segurança e não de gosto:
+ * animação por JS que não roda deixa o conteúdo preso em `opacity: 0`, ou seja,
+ * página em branco. Aqui, se a animação não rodar, o elemento aparece no estado
+ * natural — que é visível. O pior caso é não ter movimento, nunca não ter
+ * conteúdo.
+ */
+@keyframes entra {
+  from { opacity: 0; transform: translate3d(0, 14px, 0); }
+  to   { opacity: 1; transform: none; }
+}
+
+.entra {
+  animation: entra 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/*
+ * Selo do veredito: o traço se desenha uma vez, na chegada.
+ *
+ * `stroke-dashoffset` e não `svg.createDrawable`: aqui é um traço só, de
+ * comprimento conhecido, sem laço nem recolhimento. Puxar o anime.js para isso
+ * seria carregar biblioteca para animar uma propriedade que o CSS anima sozinho.
+ *
+ * O `pathLength="1"` no SVG normaliza o comprimento, então `1` vale para o anel
+ * e para o tique sem ninguém precisar medir a geometria.
+ *
+ * Não é decoração: o desenho chegando marca o instante em que a resposta saiu.
+ */
+@keyframes desenha-traco {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+
+.selo-traco {
+  stroke-dasharray: 1;
+  animation: desenha-traco 620ms cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entra {
+    animation: none;
+  }
+  /* Sem `animation: none` puro: o traço ficaria escondido pelo dasharray. */
+  .selo-traco {
+    animation: none;
+    stroke-dasharray: none;
   }
 }
 

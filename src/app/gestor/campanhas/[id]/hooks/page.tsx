@@ -15,13 +15,7 @@ export default function PaginaHooks({ params }: { params: { id: string } }) {
   return (
     <ShellGestor
       secao="campanhas"
-      crumbs={[
-        { label: "Gestor", href: "/gestor" },
-        { label: c.nome, href: `/gestor/campanhas/${c.id}` },
-        { label: "Hooks" },
-      ]}
       title="Hooks de código"
-      largura="ampla"
     >
       <GerenciadorHooks
         campanhaId={c.id}

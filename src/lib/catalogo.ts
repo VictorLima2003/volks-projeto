@@ -1,3 +1,5 @@
+import type { PedidoStatus } from "./types";
+
 /**
  * Catálogos do domínio comercial. Ficam num arquivo só para que a tela de
  * criação de campanha e as validações leiam da mesma fonte.
@@ -74,3 +76,19 @@ export const CONCESSIONARIAS = [
   "VW Batel (PR)",
   "VW Moinhos (RS)",
 ] as const;
+
+/**
+ * Rótulos legíveis dos status da esteira comercial.
+ *
+ * Existe porque o selo deixou de ser caixa alta (regra 4 do design system): em
+ * versalete o `aguardando_elegibilidade` passava por token de código, agora
+ * passaria por descuido. O mapa mora aqui, junto do resto do vocabulário do
+ * caso — o motor não precisa saber ler status para decidir nada.
+ */
+export const ROTULO_PEDIDO_STATUS: Record<PedidoStatus, string> = {
+  aguardando_elegibilidade: "aguardando elegibilidade",
+  liberado: "liberado",
+  bloqueado: "bloqueado",
+  em_analise: "em análise",
+  concluido: "concluído",
+};

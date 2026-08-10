@@ -1,10 +1,26 @@
+import {
+  CartaoCampanha,
+  CartoesNumericos,
+  Veredito,
+  type Tom,
+} from "@/components/ResultadoDecisao";
 import { ShellFluxo } from "@/components/ShellFluxo";
+import { usuarioAtual } from "@/lib/identidade-server";
 import { Badge, Card, LinkButton } from "@/components/ui";
+import { ROTULO_PEDIDO_STATUS } from "@/lib/catalogo";
+import { criteriosLegiveis, mapaDeRotulos, rotularFato, ruleSetAtivo } from "@/lib/engine";
 import { listarCampanhas, listarSessoes, pedidosPorCpf } from "@/lib/store";
 import Link from "next/link";
 import { CriarPedidoForm } from "./criar-pedido-form";
+import { EsperaDaConsulta } from "./espera";
 
 export const dynamic = "force-dynamic";
+
+/** `true`/`false` viram sim/não: no balcão ninguém lê booleano. */
+function legivel(v: unknown) {
+  if (typeof v === "boolean") return v ? "sim" : "não";
+  return String(v);
+}
 
 export default function Consulta({ searchParams }: { searchParams: { cpf?: string } }) {
   const cpf = searchParams.cpf ?? "";
@@ -20,56 +36,120 @@ export default function Consulta({ searchParams }: { searchParams: { cpf?: strin
   const nomeDoRespondente = fatosColetados
     .map(([, campos]) => campos.nome)
     .find((n) => typeof n === "string" && n.trim());
+  const eu = usuarioAtual();
   const pedidos = pedidosPorCpf(cpf);
   const campanhas = listarCampanhas();
+  const hooksPorPrefixo = new Map(
+    campanhas.flatMap((c) => c.hooks.map((h) => [h.prefixo, h.nome] as const)),
+  );
 
   const liberado = ultima?.resultado?.tipo === "elegivel";
   const bloqueado = ultima?.resultado?.tipo === "nao_elegivel";
   const analise = ultima?.resultado?.tipo === "pendente_validacao" || ultima?.resultado?.tipo === "revalidar";
 
+  // Mesmo selo do motorista, vocabulário do balcão: quem está aqui decide se
+  // monta o pedido, não se "está elegível".
+  const tom: Tom = liberado ? "go" : bloqueado ? "stop" : analise ? "espera" : "neutro";
+  const veredito = liberado
+    ? { titulo: "Pedido liberado", texto: "Pode montar agora, na campanha e no modelo que o motorista escolher." }
+    : bloqueado
+      ? { titulo: "Pedido bloqueado", texto: "Não dá para registrar nesta campanha. O motivo abaixo é o que explicar ao motorista." }
+      : analise
+        ? { titulo: "Aguardando análise", texto: "A central está conferindo o cadastro. Nada a fazer até ela responder." }
+        : {
+            titulo: "Sem jornada concluída",
+            texto:
+              "Este CPF ainda não respondeu à pesquisa. Envie o link da campanha antes de montar o pedido.",
+          };
+
+  /*
+   * Critérios da campanha, tirados da regra que concede elegibilidade no
+   * RuleSet ativo. Não há texto escrito à mão: mudou a régua, muda a frase.
+   */
+  const campanhaDaSessao = campanhas.find((c) => c.id === ultima?.campanhaId) ?? campanhas[0];
+  // Rótulos que os hooks declararam; o que não estiver lá cai na regra mecânica.
+  const rotulos = mapaDeRotulos(campanhaDaSessao?.hooks ?? []);
+  const criterios = campanhaDaSessao
+    ? criteriosLegiveis(ruleSetAtivo(campanhaDaSessao), rotulos)
+    : [];
+
+  // Os mesmos números que o motorista viu no fim da jornada.
+  const numeros = fatosColetados
+    // Com o prefixo: é ele que casa com o rótulo declarado pelo hook.
+    .flatMap(([prefixo, campos]) =>
+      Object.entries(campos).map(([k, v]) => [`${prefixo}.${k}`, v] as [string, unknown]),
+    )
+    .filter(([k, v]) => !k.endsWith(".encontrado") && !k.endsWith(".erro") && typeof v === "number")
+    .slice(0, 3);
+
+  /*
+   * O que sobra depois do que a tela já mostra: fora os campos de controle, os
+   * números que viraram cartão grande e o nome que virou título. O corte é por
+   * chave, e não por posição, porque os cartões pegam os três primeiros
+   * numéricos quaisquer que sejam — um quarto número novo cai aqui sozinho.
+   */
+  const jaNaTela = new Set(numeros.map(([k]) => k));
+  const controle = new Set(["encontrado", "erro", "nome"]);
+  const restantes = fatosColetados
+    .map(([prefixo, campos]) => ({
+      prefixo,
+      // O grupo leva o nome que o gestor deu ao hook, não o prefixo técnico.
+      titulo: hooksPorPrefixo.get(prefixo) ?? prefixo,
+      campos: Object.entries(campos).filter(
+        ([k]) => !controle.has(k) && !jaNaTela.has(`${prefixo}.${k}`),
+      ),
+    }))
+    .filter((g) => g.campos.length > 0);
+
   return (
     <ShellFluxo
       area={{ label: "Vendedor", href: "/vendedor" }}
-      crumbs={[{ label: "Vendedor", href: "/vendedor" }, { label: cpf }]}
-      title={String(nomeDoRespondente ?? cpf)}
+      seletorDeUsuario
+      /* Sem migalha e sem `title`: o cartão do motorista é o h1 da tela, e a
+         migalha repetia o CPF que já está nele e na barra de endereço. A volta
+         para `/vendedor` é o clique na marca, que todo o produto já usa. */
     >
-      {/* Semáforo operacional — a cor está na faixa, não no título */}
-      <div className="border hairline rounded-md overflow-hidden mb-10 shadow-card">
-        <div
-          className={
-            "h-2 " +
-            (liberado ? "bg-signal-go"
-              : bloqueado ? "bg-signal-stop"
-              : analise ? "bg-signal-warn"
-              : "bg-ink-400")
-          }
+      <EsperaDaConsulta nome={typeof nomeDoRespondente === "string" ? nomeDoRespondente : undefined} />
+
+      {/*
+       * O veredito é apresentado com as mesmas peças da tela do motorista:
+       * cartão do assunto, selo, título colorido, motivo e os números que
+       * pesaram. Antes era uma faixa de semáforo — o mesmo fato numa segunda
+       * linguagem, e nenhuma conversa possível entre quem responde e quem
+       * atende. O que muda aqui é só o vocabulário: o motorista lê sobre a
+       * condição dele, o vendedor lê sobre o pedido que pode ou não montar.
+       */}
+      <div className="mb-10">
+        <CartaoCampanha
+          rotulo="Motorista"
+          nome={String(nomeDoRespondente ?? cpf)}
+          /* Só repete o CPF embaixo quando o nome está no lugar do nome —
+             senão o cartão mostraria o mesmo número duas vezes. */
+          sub={nomeDoRespondente ? cpf : undefined}
         />
-        <div className="p-7 flex flex-wrap items-center justify-between gap-5">
-          <div>
-            <div className="text-xs font-bold uppercase tracking-widest text-ink-600 mb-2.5">Situação do pedido</div>
-            <div className="display text-3xl">
-              {liberado ? "Pedido liberado"
-                : bloqueado ? "Pedido bloqueado"
-                : analise ? "Aguardando análise"
-                : "Sem jornada concluída"}
-            </div>
-            {ultima?.resultado && (
-              <p className="text-base text-ink-700 mt-3.5 max-w-xl">{ultima.resultado.motivo}</p>
-            )}
-            {!ultima && (
-              <p className="text-base text-ink-700 mt-3.5 max-w-xl">
-                Este CPF ainda não completou a pesquisa de elegibilidade.
-                Envie o link da campanha para o motorista antes de montar o pedido.
-              </p>
-            )}
-          </div>
-          {ultima?.resultado?.proximaAcao && (
-            <div className="max-w-xs border-l-4 border-vw-deep pl-4">
-              <div className="text-xs font-bold uppercase tracking-widest text-ink-600 mb-1.5">Próxima ação</div>
-              <div className="text-base">{ultima.resultado.proximaAcao}</div>
-            </div>
-          )}
-        </div>
+        <Veredito tom={tom} titulo={veredito.titulo} texto={liberado ? undefined : veredito.texto} />
+
+        {/*
+         * No caminho liberado, uma frase só: os critérios da campanha, vindos da
+         * regra. Antes eram duas — uma dizendo ao vendedor o que ele podia
+         * fazer, outra sendo o `motivo` do motor, escrito na segunda pessoa
+         * para quem responde ("Você atende aos critérios"). No balcão, essa
+         * segunda pessoa é a errada.
+         */}
+        {liberado ? (
+          criterios.length > 0 && (
+            <p className="text-base text-ink-800 mt-8">
+              O motorista atende aos critérios necessários para a campanha:{" "}
+              <strong className="font-semibold">{criterios.join(" · ")}</strong>.
+            </p>
+          )
+        ) : (
+          ultima?.resultado && (
+            <p className="text-base text-ink-800 mt-8">{ultima.resultado.motivo}</p>
+          )
+        )}
+
+        <CartoesNumericos numeros={numeros} rotulos={rotulos} />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -79,10 +159,13 @@ export default function Consulta({ searchParams }: { searchParams: { cpf?: strin
               <h3 className="text-lg font-semibold tracking-tight mb-4">Montar pedido</h3>
               <CriarPedidoForm
                 cpf={cpf}
+                vendedor={eu.nome}
+                concessionaria={eu.concessionaria ?? campanhaDaSessao?.concessionaria ?? ""}
                 campanhas={campanhas.map((c) => ({ id: c.id, nome: c.nome, modelos: c.modelos, concessionaria: c.concessionaria }))}
               />
             </Card>
           )}
+
 
           {!liberado && !ultima && (
             <Card>
@@ -92,7 +175,10 @@ export default function Consulta({ searchParams }: { searchParams: { cpf?: strin
                   <Link
                     key={c.id}
                     href={`/motorista/jornada?campanha=${c.id}&cpf=${encodeURIComponent(cpf)}`}
-                    className="flex items-center justify-between border hairline-strong bg-ink-100 hover:bg-ink-200 px-4 py-3 transition"
+                    /* Papel branco com realce cinza no hover, igual às linhas de
+                       tabela. O `bg-ink-100` de antes era a mesma faixa bege
+                       que saiu do cabeçalho das tabelas. */
+                    className="flex items-center justify-between border hairline-strong bg-ink-0 hover:bg-ink-200/40 px-4 py-3 transition"
                   >
                     <span>{c.nome}</span>
                     <span className="text-xs text-ink-600">{c.modelos.join(" · ")} →</span>
@@ -126,7 +212,9 @@ export default function Consulta({ searchParams }: { searchParams: { cpf?: strin
                       <div className="text-sm">{p.modelo} · {p.concessionaria}</div>
                       <div className="text-xs text-ink-600 mono">{p.id} · {p.criadoEm.slice(0, 10)}</div>
                     </div>
-                    <Badge tone={p.status === "bloqueado" ? "stop" : "go"}>{p.status}</Badge>
+                    <Badge tone={p.status === "bloqueado" ? "stop" : "go"}>
+                      {ROTULO_PEDIDO_STATUS[p.status]}
+                    </Badge>
                   </div>
                 ))}
               </div>
@@ -135,51 +223,45 @@ export default function Consulta({ searchParams }: { searchParams: { cpf?: strin
         </div>
 
         <div className="space-y-6">
-          {/* O vendedor vê os fatos que a pesquisa coletou — sejam de que
-              hook forem. A tela não conhece nenhuma base por nome. */}
+          {/*
+           * O que a consulta trouxe e ainda não está na tela.
+           *
+           * Os três números que viraram cartão grande e o nome que virou título
+           * do cartão azul saem daqui — repetidos, eles enchiam a coluna de eco
+           * e empurravam para baixo o que só existe aqui: cidade, status,
+           * restrição. O nome do campo passa pela mesma regra de rótulo que a
+           * frase dos critérios usa, então `mesesUber` nunca aparece cru.
+           *
+           * A tela continua sem conhecer base nenhuma por nome: o título de cada
+           * grupo é o nome que o gestor deu ao hook.
+           */}
           <Card>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-ink-600">
-              Dados coletados
-            </h3>
-            {fatosColetados.length > 0 ? (
+            <h3 className="text-sm font-semibold">Dados coletados</h3>
+            {restantes.length > 0 ? (
               <div className="mt-4 space-y-4">
-                {fatosColetados.map(([origem, campos]) => (
-                  <div key={origem}>
-                    <div className="text-xs uppercase tracking-wide text-ink-600 mb-1.5">
-                      {origem}
-                    </div>
+                {restantes.map(({ prefixo, titulo, campos }) => (
+                  <div key={prefixo}>
+                    <div className="text-xs text-ink-600 mb-1.5">{titulo}</div>
                     <dl className="text-sm space-y-1.5">
-                      {Object.entries(campos)
-                        .filter(([k]) => k !== "encontrado" && k !== "erro")
-                        .map(([k, v]) => (
-                          <div key={k} className="flex justify-between gap-3">
-                            <dt className="text-ink-600 mono text-xs">{k}</dt>
-                            <dd className="text-right">{String(v)}</dd>
-                          </div>
-                        ))}
+                      {campos.map(([k, v]) => (
+                        <div key={k} className="flex justify-between gap-3">
+                          <dt className="text-ink-600">{rotularFato(`${prefixo}.${k}`, rotulos)}</dt>
+                          <dd className="text-right">{legivel(v)}</dd>
+                        </div>
+                      ))}
                     </dl>
                   </div>
                 ))}
               </div>
             ) : (
               <p className="text-sm text-ink-700 mt-3">
-                Nenhuma consulta externa retornou dados para este CPF. Encaminhe à Central para
-                análise manual.
+                {ultima
+                  ? "Esta jornada não guardou os dados consultados."
+                  : "Nenhuma consulta foi feita para este CPF ainda."}
               </p>
             )}
           </Card>
 
-          {ultima?.resultado && (
-            <Card>
-              <h3 className="text-xs font-bold uppercase tracking-widest text-ink-600">Auditoria</h3>
-              <dl className="mt-4 text-xs space-y-2 mono text-ink-700">
-                <div>RuleSet v{ultima.resultado.ruleSetVersao}</div>
-                <div>Regra: {ultima.resultado.regraAplicadaId}</div>
-                <div>{ultima.resultado.decididoEm.slice(0, 19).replace("T", " ")}</div>
-                <div>Sessão: {ultima.id}</div>
-              </dl>
-            </Card>
-          )}
         </div>
       </div>
     </ShellFluxo>

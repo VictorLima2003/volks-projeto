@@ -2,6 +2,7 @@ import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, LinkButton, Stat, Table, TD, TH, THead, TR } from "@/components/ui";
 import { contarBlocos, ruleSetAtivo } from "@/lib/engine";
 import { listarSessoes, listarPedidos, obterCampanha } from "@/lib/store";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -24,10 +25,6 @@ export default function CampanhaOverview({ params }: { params: { id: string } })
   return (
     <ShellGestor
       secao="campanhas"
-      crumbs={[
-        { label: "Gestor", href: "/gestor" },
-        { label: c.nome },
-      ]}
       title={c.nome}
       action={
         <div className="flex flex-wrap gap-2">
@@ -92,7 +89,7 @@ export default function CampanhaOverview({ params }: { params: { id: string } })
 
         <div className="space-y-6">
           <Card>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-ink-600">Configuração</h3>
+            <h3 className="text-sm font-semibold">Configuração</h3>
             <dl className="mt-4 text-sm space-y-2">
               <div className="flex justify-between"><dt className="text-ink-600">Modelos</dt><dd className="text-right">{c.modelos.join(", ")}</dd></div>
               <div className="flex justify-between"><dt className="text-ink-600">Rede</dt><dd className="text-right">{c.concessionaria}</dd></div>
@@ -105,13 +102,22 @@ export default function CampanhaOverview({ params }: { params: { id: string } })
           </Card>
 
           <Card>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-ink-600">Link de teste</h3>
+            <h3 className="text-sm font-semibold">Link de teste</h3>
             <p className="text-sm text-ink-700 mt-3">
               Compartilhe com um motorista de teste:
             </p>
             <div className="mono text-xs bg-ink-0 border hairline-strong p-3 mt-3 break-all">
               /motorista?campanha={c.id}
             </div>
+            <p className="text-sm text-ink-700 mt-4">
+              <Link
+                href="/documentos"
+                className="underline underline-offset-4 decoration-ink-300 hover:decoration-vw-deep transition"
+              >
+                CPFs para testar
+              </Link>{" "}
+              leva a uma lista de documentos que produzem decisões diferentes.
+            </p>
           </Card>
         </div>
       </div>

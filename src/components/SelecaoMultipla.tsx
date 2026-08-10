@@ -77,7 +77,7 @@ export function SelecaoMultipla({
               aria-pressed={ativo}
               onClick={() => alternar(o.valor)}
               className={
-                "px-4 h-10 rounded-full text-sm font-medium border-2 transition " +
+                "px-4 h-10 rounded-full text-sm font-medium border transition " +
                 (ativo
                   ? "bg-vw-deep text-ink-0 border-vw-deep"
                   : "bg-ink-0 text-ink-800 border-ink-300 hover:border-vw-deep")

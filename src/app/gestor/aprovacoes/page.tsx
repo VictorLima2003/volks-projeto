@@ -1,5 +1,6 @@
 import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, Stat } from "@/components/ui";
+import { dataPorExtenso } from "@/lib/painel";
 import { diffRuleSets } from "@/lib/engine";
 import { podeAprovar, usuarioPorId } from "@/lib/identidade";
 import { usuarioAtual } from "@/lib/identidade-server";
@@ -56,7 +57,7 @@ export default function Aprovacoes() {
     <ShellGestor
       secao="aprovacoes"
       title="Aprovações"
-      crumbs={[{ label: "Gestor", href: "/gestor" }, { label: "Aprovações" }]}
+      data={dataPorExtenso()}
     >
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-10">
         <Stat label="Aguardando aprovação" value={pendentes.length} tone={pendentes.length ? "warn" : "neutral"} />
@@ -70,7 +71,7 @@ export default function Aprovacoes() {
 
       {!podeAprovar(eu) && pendentes.length > 0 && (
         <div className="border border-signal-warn/45 bg-signal-warn/10 rounded-md p-6 mb-8">
-          <div className="text-xs font-bold uppercase tracking-widest text-signal-warn mb-2">
+          <div className="text-sm font-semibold text-signal-warn mb-2">
             Você não aprova regras
           </div>
           <p className="text-base text-ink-800">

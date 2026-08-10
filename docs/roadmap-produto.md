@@ -1,4 +1,4 @@
-# Roadmap de produto — Wolks
+# Roadmap de produto — Volkswagen
 
 > Documento derivado do briefing de 05/08/2026. Nada foi removido do pedido original;
 > o texto foi reorganizado em blocos, priorizado e transformado em critérios verificáveis.

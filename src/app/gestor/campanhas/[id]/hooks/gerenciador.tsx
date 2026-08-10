@@ -1,5 +1,6 @@
 "use client";
 
+import { useAviso } from "@/components/Avisos";
 import { EditorCodigo } from "@/components/EditorCodigo";
 import { Badge, Button, Card, Input, Label, Select, Textarea } from "@/components/ui";
 import { AnexoHook, Hook, ParametroHook } from "@/lib/types";
@@ -30,14 +31,12 @@ export function GerenciadorHooks({
   const [hooks, setHooks] = useState<Hook[]>(hooksIniciais);
   const [selecionado, setSelecionado] = useState<string | null>(hooksIniciais[0]?.id ?? null);
   const [salvando, setSalvando] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
+  const { avisar } = useAviso();
 
   const hook = hooks.find((h) => h.id === selecionado) ?? null;
 
   function patch(id: string, p: Partial<Hook>) {
     setHooks((hs) => hs.map((h) => (h.id === id ? { ...h, ...p } : h)));
-    setMsg(null);
   }
 
   function adicionar() {
@@ -49,19 +48,17 @@ export function GerenciadorHooks({
       prefixo: `hook${hooks.length + 1}`,
       parametros: [{ nome: "documento", rotulo: "Documento" }],
       mensagemCarregando: "Consultando...",
+      rotulos: {},
       codigo: CODIGO_INICIAL,
       anexos: [],
       ativo: false,
     };
     setHooks((hs) => [...hs, novo]);
     setSelecionado(id);
-    setMsg(null);
   }
 
   async function salvar() {
     setSalvando(true);
-    setErro(null);
-    setMsg(null);
     const res = await fetch("/api/hooks", {
       method: "PUT",
       headers: { "content-type": "application/json" },
@@ -70,10 +67,10 @@ export function GerenciadorHooks({
     const json = await res.json();
     setSalvando(false);
     if (!res.ok) {
-      setErro(json.detalhe ?? json.erro ?? "Falha ao salvar.");
+      avisar(json.detalhe ?? json.erro ?? "Falha ao salvar.", "stop");
       return;
     }
-    setMsg(`${json.total} hook(s) salvo(s).`);
+    avisar(`${json.total} hook(s) salvo(s).`, "go");
   }
 
   return (
@@ -81,7 +78,7 @@ export function GerenciadorHooks({
       {/* ---------------- Lista ---------------- */}
       <aside className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-widest text-ink-600">Hooks</h2>
+          <h2 className="text-sm font-semibold">Hooks</h2>
           <span className="text-sm text-ink-600">{hooks.length}</span>
         </div>
 
@@ -92,7 +89,7 @@ export function GerenciadorHooks({
                 type="button"
                 onClick={() => setSelecionado(h.id)}
                 className={
-                  "w-full text-left border-2 rounded-md px-4 py-3 transition " +
+                  "w-full text-left border rounded-md px-4 py-3 transition " +
                   (h.id === selecionado
                     ? "border-vw-deep bg-vw-deep/[0.06]"
                     : "border-ink-300 hover:border-ink-500 bg-ink-0")
@@ -117,16 +114,6 @@ export function GerenciadorHooks({
             <p className="text-sm text-ink-700">
               {nomeUsuario} não edita hooks. Troque para alguém de Produto ou Marketing.
             </p>
-          )}
-          {erro && (
-            <div className="border border-signal-stop/45 bg-signal-stop/10 rounded-sm p-3 text-sm text-signal-stop">
-              {erro}
-            </div>
-          )}
-          {msg && (
-            <div className="border border-signal-go/45 bg-signal-go/10 rounded-sm p-3 text-sm text-signal-go">
-              {msg}
-            </div>
           )}
           <Button onClick={salvar} disabled={salvando || !podeEditar} className="w-full">
             {salvando ? "Salvando..." : "Salvar hooks"}
@@ -240,6 +227,13 @@ function EdicaoHook({
       </Card>
 
       <Card>
+        <RotulosDeFatos
+          rotulos={hook.rotulos ?? {}}
+          onChange={(rotulos) => onPatch({ rotulos })}
+        />
+      </Card>
+
+      <Card>
         <div className="flex items-baseline justify-between mb-4">
           <Label className="mb-0">Código</Label>
           <span className="text-xs text-ink-600">
@@ -263,7 +257,7 @@ function EdicaoHook({
       </Card>
 
       <div className="border-l-4 border-signal-warn pl-5 py-1">
-        <div className="text-xs font-bold uppercase tracking-widest text-signal-warn mb-2">
+        <div className="text-sm font-semibold text-signal-warn mb-2">
           Antes de ir para produção
         </div>
         <p className="text-sm text-ink-700">
@@ -491,7 +485,7 @@ function ExecutarTeste({ campanhaId, hook }: { campanhaId: string; hook: Hook })
           ) : null}
 
           <div>
-            <div className="text-xs font-bold uppercase tracking-widest text-ink-600 mb-1.5">
+            <div className="text-sm font-semibold text-ink-600 mb-1.5">
               Fatos gerados
             </div>
             <pre className="mono text-xs bg-ink-100 border hairline rounded-sm p-3 overflow-x-auto">
@@ -503,7 +497,7 @@ function ExecutarTeste({ campanhaId, hook }: { campanhaId: string; hook: Hook })
 
           {logs.length > 0 && (
             <div>
-              <div className="text-xs font-bold uppercase tracking-widest text-ink-600 mb-1.5">
+              <div className="text-sm font-semibold text-ink-600 mb-1.5">
                 Logs
               </div>
               <pre className="mono text-xs bg-ink-100 border hairline rounded-sm p-3 overflow-x-auto">
@@ -512,6 +506,83 @@ function ExecutarTeste({ campanhaId, hook }: { campanhaId: string; hook: Hook })
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+
+/**
+ * Como cada fato deve aparecer nas telas.
+ *
+ * A chave é o nome que o código devolve — identificador, sem acento. O rótulo é
+ * o que o vendedor e o motorista leem. Sem isto a interface só conseguia separar
+ * o camelCase e subir a inicial, e `temRestricao` virava "Tem Restricao".
+ *
+ * O que não estiver aqui continua caindo nessa regra mecânica: preencher é
+ * opcional, campo por campo.
+ */
+function RotulosDeFatos({
+  rotulos,
+  onChange,
+}: {
+  rotulos: Record<string, string>;
+  onChange: (r: Record<string, string>) => void;
+}) {
+  const linhas = Object.entries(rotulos);
+
+  function trocar(i: number, chave: string, rotulo: string) {
+    const novas = linhas.map((l, j) => (j === i ? [chave, rotulo] : l));
+    onChange(Object.fromEntries(novas.filter(([c]) => c.trim())));
+  }
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-4">
+        <Label className="mb-0">Rótulos dos fatos</Label>
+        <span className="text-xs text-ink-600">como cada campo aparece nas telas</span>
+      </div>
+
+      <div className="space-y-2.5">
+        {linhas.map(([chave, rotulo], i) => (
+          <div key={i} className="grid grid-cols-12 gap-2.5">
+            <Input
+              className="col-span-5 mono"
+              value={chave}
+              onChange={(e) => trocar(i, e.target.value, rotulo)}
+              placeholder="temRestricao"
+            />
+            <Input
+              className="col-span-6"
+              value={rotulo}
+              onChange={(e) => trocar(i, chave, e.target.value)}
+              placeholder="Tem restrição"
+            />
+            <button
+              type="button"
+              onClick={() => onChange(Object.fromEntries(linhas.filter((_, j) => j !== i)))}
+              className="col-span-1 text-sm text-ink-600 hover:text-signal-stop transition"
+              aria-label={`Remover rótulo de ${chave}`}
+            >
+              remover
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onChange({ ...rotulos, "": "" })}
+        className="mt-3 text-sm font-semibold text-vw-deep hover:underline"
+      >
+        + Rótulo
+      </button>
+
+      {linhas.length === 0 && (
+        <p className="text-xs text-ink-600 mt-3">
+          Nenhum rótulo definido. Os fatos aparecem com o nome da chave, separado
+          por maiúsculas.
+        </p>
       )}
     </div>
   );

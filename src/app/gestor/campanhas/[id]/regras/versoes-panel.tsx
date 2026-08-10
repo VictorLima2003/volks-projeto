@@ -2,6 +2,7 @@
 
 import { Badge, Card } from "@/components/ui";
 import { RuleSetStatus } from "@/lib/types";
+import { useAviso } from "@/components/Avisos";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -42,12 +43,11 @@ export function VersoesPanel({
   versoes: Versao[];
 }) {
   const router = useRouter();
+  const { avisar } = useAviso();
   const [ocupado, setOcupado] = useState<string | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
 
   async function reativar(ruleSetId: string) {
     setOcupado(ruleSetId);
-    setErro(null);
     const res = await fetch("/api/rulesets", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
@@ -56,7 +56,7 @@ export function VersoesPanel({
     const json = await res.json();
     setOcupado(null);
     if (!res.ok) {
-      setErro(json.detalhe ?? json.erro ?? "Falha ao reativar.");
+      avisar(json.detalhe ?? json.erro ?? "Falha ao reativar.", "stop");
       return;
     }
     router.refresh();
@@ -64,15 +64,10 @@ export function VersoesPanel({
 
   return (
     <Card>
-      <h3 className="text-xs font-bold uppercase tracking-widest text-ink-600 mb-4">
+      <h3 className="text-sm font-semibold mb-4">
         Histórico e auditoria
       </h3>
 
-      {erro && (
-        <div className="border border-signal-stop/45 bg-signal-stop/10 rounded-sm p-3 text-sm text-signal-stop mb-4">
-          {erro}
-        </div>
-      )}
 
       <ol className="space-y-3">
         {versoes.map((v) => (

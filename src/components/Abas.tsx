@@ -26,7 +26,7 @@ export function Abas({
   acessorio?: ReactNode;
 }) {
   return (
-    <div className="flex items-end justify-between gap-4 border-b-2 hairline-strong mb-8">
+    <div className="flex items-end justify-between gap-4 border-b hairline-strong mb-8">
       <div role="tablist" className="flex gap-1">
         {abas.map((a) => {
           const selecionada = a.id === ativa;

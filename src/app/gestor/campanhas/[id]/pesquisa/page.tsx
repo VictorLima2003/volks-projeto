@@ -15,13 +15,7 @@ export default function PaginaPesquisa({ params }: { params: { id: string } }) {
   return (
     <ShellGestor
       secao="campanhas"
-      crumbs={[
-        { label: "Gestor", href: "/gestor" },
-        { label: c.nome, href: `/gestor/campanhas/${c.id}` },
-        { label: "Pesquisa" },
-      ]}
       title="Construtor de pesquisa"
-      largura="ampla"
     >
       <ConstrutorPesquisa
         campanhaId={c.id}

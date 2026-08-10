@@ -25,11 +25,6 @@ export default function Regras({ params }: { params: { id: string } }) {
   return (
     <ShellGestor
       secao="campanhas"
-      crumbs={[
-        { label: "Gestor", href: "/gestor" },
-        { label: c.nome, href: `/gestor/campanhas/${c.id}` },
-        { label: "Regras" },
-      ]}
       title={`Regras · v${rs.versao}`}
       action={
         <div className="flex flex-wrap gap-2">
@@ -67,7 +62,7 @@ export default function Regras({ params }: { params: { id: string } }) {
           </p>
           {mudancas.length > 0 && (
             <div className="mt-6 pt-6 border-t hairline">
-              <div className="text-xs font-bold uppercase tracking-widest text-ink-600 mb-3">
+              <div className="text-sm font-semibold text-ink-600 mb-3">
                 O que mudou da v{rs.versao - 1} para a v{rs.versao}
               </div>
               <ul className="space-y-1.5 text-sm">
@@ -118,12 +113,12 @@ export default function Regras({ params }: { params: { id: string } }) {
                 </div>
                 <div className="grid md:grid-cols-2 gap-5 text-base">
                   <div>
-                    <div className="text-xs font-bold uppercase tracking-widest text-ink-600 mb-1.5">Motivo (motorista/vendedor)</div>
+                    <div className="text-sm font-semibold text-ink-600 mb-1.5">Motivo (motorista/vendedor)</div>
                     <div className="text-ink-800">{r.motivo}</div>
                   </div>
                   {r.proximaAcao && (
                     <div>
-                      <div className="text-xs font-bold uppercase tracking-widest text-ink-600 mb-1.5">Próxima ação</div>
+                      <div className="text-sm font-semibold text-ink-600 mb-1.5">Próxima ação</div>
                       <div className="text-ink-800">{r.proximaAcao}</div>
                     </div>
                   )}

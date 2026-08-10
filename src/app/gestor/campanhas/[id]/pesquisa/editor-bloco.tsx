@@ -230,7 +230,7 @@ function CamposFeedback({
               type="color"
               value={cor}
               onChange={(e) => onPatch({ cor: e.target.value })}
-              className="w-14 h-12 rounded-sm border-2 hairline-strong bg-ink-0 cursor-pointer"
+              className="w-14 h-12 rounded-sm border hairline-strong bg-ink-0 cursor-pointer"
               aria-label="Escolher cor"
             />
             <Input
@@ -277,7 +277,7 @@ function CamposFeedback({
 
       {/* Prévia do que o motorista vê */}
       <div className="border-t hairline pt-5">
-        <div className="text-xs font-bold uppercase tracking-widest text-ink-600 mb-3">
+        <div className="text-sm font-semibold text-ink-600 mb-3">
           Prévia
         </div>
         <div className="border hairline rounded-md overflow-hidden">
@@ -384,7 +384,7 @@ function CamposConsulta({
 
       {hook && (
         <div className="border-l-2 border-vw-deep pl-4">
-          <div className="text-xs font-bold uppercase tracking-widest text-ink-600 mb-1.5">
+          <div className="text-sm font-semibold text-ink-600 mb-1.5">
             O que esta consulta traz
           </div>
           <p className="text-sm text-ink-700">

@@ -10,6 +10,7 @@ import {
   ehConsulta,
   ehFeedback,
   ehPergunta,
+  Hook,
   Operador,
   Regra,
   ResultadoTipo,
@@ -600,6 +601,75 @@ export function resultadoLabel(t: Regra["resultado"]): string {
     erro: "Erro",
   };
   return map[t];
+}
+
+/**
+ * Critérios de elegibilidade da campanha, em linguagem de gente.
+ *
+ * Sai da regra que concede `elegivel` no RuleSet ativo — não de texto escrito à
+ * mão em lugar nenhum. É o que faz a frase continuar verdadeira quando o gestor
+ * muda a régua: mudou a regra, mudou o que a tela diz.
+ *
+ * Continua sem saber de negócio: o nome do fato vira rótulo por regra mecânica,
+ * e o prefixo do hook é descartado porque quem lê não escolheu fonte nenhuma.
+ */
+export function criteriosLegiveis(rs: RuleSet, rotulos: Record<string, string> = {}): string[] {
+  const regra = rs.regras
+    .filter((r) => r.resultado === "elegivel")
+    .sort((a, b) => a.prioridade - b.prioridade)[0];
+  if (!regra) return [];
+
+  const termos = (c: Condicao): Condicao[] =>
+    c.todas?.length ? c.todas.flatMap(termos) : c.qualquer?.length ? c.qualquer.flatMap(termos) : [c];
+
+  return termos(regra.condicao)
+    .filter((t) => t.fato)
+    .map((t) => {
+      const nome = rotularFato(t.fato, rotulos);
+      const v = t.valor;
+      switch (t.operador) {
+        case ">=": return `${nome}: ${v} ou mais`;
+        case ">":  return `${nome}: mais de ${v}`;
+        case "<=": return `${nome}: ${v} ou menos`;
+        case "<":  return `${nome}: menos de ${v}`;
+        case "=":  return `${nome}: ${v}`;
+        case "!=": return `${nome}: diferente de ${v}`;
+        case "truthy": return `${nome}: sim`;
+        case "falsy":  return `${nome}: não`;
+        default: return `${nome}: ${t.operador} ${v ?? ""}`.trim();
+      }
+    });
+}
+
+/**
+ * Rótulos declarados pelos hooks, indexados por caminho de fato.
+ * `{ "credito.temRestricao": "Tem restrição" }`.
+ */
+export function mapaDeRotulos(hooks: Hook[]): Record<string, string> {
+  const mapa: Record<string, string> = {};
+  for (const h of hooks) {
+    for (const [chave, rotulo] of Object.entries(h.rotulos ?? {})) {
+      if (rotulo.trim()) mapa[`${h.prefixo}.${chave}`] = rotulo.trim();
+    }
+  }
+  return mapa;
+}
+
+/**
+ * Nome de exibição de um fato. Usa o rótulo que o hook declarou; sem ele, cai na
+ * regra mecânica. É por isso que o motor continua sem conhecer campo por nome:
+ * quem nomeia é o hook, não o código.
+ */
+export function rotularFato(caminho: string, rotulos: Record<string, string> = {}): string {
+  return rotulos[caminho] ?? rotuloDeFato(caminho);
+}
+
+/** `uber.mesesUber` → "Meses Uber". O prefixo some: quem lê não escolheu fonte. */
+function rotuloDeFato(caminho: string): string {
+  const chave = caminho.split(".").pop() ?? caminho;
+  if (chave.length <= 2) return chave.toUpperCase();
+  const separado = chave.replace(/([a-z0-9])([A-Z])/g, "$1 $2");
+  return separado.charAt(0).toUpperCase() + separado.slice(1);
 }
 
 function explicarCond(c: Condicao): string {

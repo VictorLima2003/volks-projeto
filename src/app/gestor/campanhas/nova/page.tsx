@@ -4,13 +4,14 @@ import { ShellGestor } from "@/components/ShellGestor";
 import { SelecaoMultipla } from "@/components/SelecaoMultipla";
 import { Button, Card, Input, Label, Select, Textarea } from "@/components/ui";
 import { CONCESSIONARIAS, FAIXAS_ETARIAS, MODELOS_VW, REGIOES, UFS } from "@/lib/catalogo";
+import { useAviso } from "@/components/Avisos";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function NovaCampanha() {
   const router = useRouter();
+  const { avisar } = useAviso();
   const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
 
   const [modelos, setModelos] = useState<string[]>(["T-Cross"]);
   const [ufs, setUfs] = useState<string[]>(["SP"]);
@@ -21,7 +22,6 @@ export default function NovaCampanha() {
   async function enviar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSalvando(true);
-    setErro(null);
     const fd = new FormData(e.currentTarget);
     const res = await fetch("/api/campanhas", {
       method: "POST",
@@ -36,7 +36,7 @@ export default function NovaCampanha() {
     const json = await res.json();
     setSalvando(false);
     if (!res.ok) {
-      setErro(json.detalhe ?? json.erro ?? "Falha ao criar campanha.");
+      avisar(json.detalhe ?? json.erro ?? "Falha ao criar campanha.", "stop");
       return;
     }
     router.push(`/gestor/campanhas/${json.id}`);
@@ -47,7 +47,6 @@ export default function NovaCampanha() {
     <ShellGestor
       secao="campanhas"
       title="Nova campanha"
-      crumbs={[{ label: "Gestor", href: "/gestor" }, { label: "Nova campanha" }]}
     >
       <form onSubmit={enviar} className="grid lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-2 space-y-6">
@@ -138,7 +137,7 @@ export default function NovaCampanha() {
 
         <aside className="space-y-5 lg:sticky lg:top-24">
           <Card>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-ink-600 mb-4">Resumo</h3>
+            <h3 className="text-sm font-semibold mb-4">Resumo</h3>
             <dl className="space-y-3 text-sm">
               <div>
                 <dt className="text-ink-600">Modelos</dt>
@@ -158,7 +157,7 @@ export default function NovaCampanha() {
           </Card>
 
           <Card>
-            <h3 className="text-xs font-bold uppercase tracking-widest text-ink-600 mb-4">
+            <h3 className="text-sm font-semibold mb-4">
               O que vem depois
             </h3>
             <ol className="space-y-2.5 text-sm text-ink-700">
@@ -173,11 +172,6 @@ export default function NovaCampanha() {
             </p>
           </Card>
 
-          {erro && (
-            <div className="border border-signal-stop/45 bg-signal-stop/10 rounded-sm p-4 text-sm text-signal-stop">
-              {erro}
-            </div>
-          )}
 
           <Button type="submit" disabled={salvando || incompleto} className="w-full">
             {salvando ? "Criando..." : "Criar campanha"}

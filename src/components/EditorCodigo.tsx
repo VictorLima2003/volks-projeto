@@ -52,7 +52,7 @@ export function EditorCodigo({
   );
 
   return (
-    <div className="border-2 hairline-strong rounded-sm overflow-hidden">
+    <div className="border hairline-strong rounded-sm overflow-hidden">
       <Editor
         height={altura}
         defaultLanguage="javascript"

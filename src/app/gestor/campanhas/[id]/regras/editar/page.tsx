@@ -14,12 +14,6 @@ export default function EditarRegras({ params }: { params: { id: string } }) {
   return (
     <ShellGestor
       secao="campanhas"
-      crumbs={[
-        { label: "Gestor", href: "/gestor" },
-        { label: c.nome, href: `/gestor/campanhas/${c.id}` },
-        { label: "Regras", href: `/gestor/campanhas/${c.id}/regras` },
-        { label: "Editar" },
-      ]}
       title="Editar regras"
     >
       <p className="text-base text-ink-600 max-w-3xl mb-8">

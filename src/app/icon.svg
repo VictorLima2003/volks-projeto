@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Volkswagen">
+  <!--
+    Favicon. Disco navy com o símbolo em branco, porque em 16px um traço navy
+    sobre a aba clara some e sobre a aba escura some de novo — o disco garante
+    o contraste seja qual for o tema do navegador.
+
+    A marca é a mesma geometria de src/components/LogoVW.tsx, só reduzida em
+    volta do próprio centro para sobrar margem dentro do disco. Traço mais
+    grosso que o original: em 16px, 6 unidades viram meio pixel.
+  -->
+  <circle cx="50" cy="50" r="50" fill="#001E50"/>
+  <g transform="translate(50 50) scale(0.82) translate(-50 -50)"
+     fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linejoin="miter" stroke-miterlimit="3">
+    <circle cx="50" cy="50" r="45"/>
+    <path d="M35 21 L50 46 L65 21"/>
+    <path d="M18 29 L35 79 L50 56 L65 79 L82 29"/>
+  </g>
+</svg>

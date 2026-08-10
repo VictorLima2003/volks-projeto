@@ -6,6 +6,7 @@ import {
   obterCampanha,
 } from "@/lib/store";
 import { decidir, montarFatos, ruleSetAtivo } from "@/lib/engine";
+import { usuarioAtual } from "@/lib/identidade-server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,9 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { cpf, campanhaId, vendedor, concessionaria, modelo } = body;
+  const { cpf, campanhaId, modelo } = body;
+
+  const autor = usuarioAtual();
 
   const campanha = obterCampanha(campanhaId);
   if (!campanha) {
@@ -40,8 +43,16 @@ export async function POST(req: Request) {
   const pedido = criarPedido({
     campanhaId,
     cpf,
-    vendedor: String(vendedor ?? ""),
-    concessionaria: String(concessionaria ?? campanha.concessionaria),
+    /*
+     * Autoria e loja vêm da sessão, e o que o corpo mandar é ignorado.
+     *
+     * Cada vendedor entra com o login dele, então quem registra é sempre quem
+     * está logado, e a loja é aquela onde ele trabalha. Perguntar qualquer um
+     * dos dois seria oferecer a chance de lançar em nome de outra pessoa ou de
+     * outra concessionária.
+     */
+    vendedor: autor.id,
+    concessionaria: autor.concessionaria ?? campanha.concessionaria,
     modelo: String(modelo ?? campanha.modelos[0] ?? ""),
     status: "liberado",
   });

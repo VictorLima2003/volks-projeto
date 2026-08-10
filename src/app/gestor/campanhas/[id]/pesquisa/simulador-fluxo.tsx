@@ -173,7 +173,7 @@ export function SimuladorFluxo({
       <div className="space-y-5 lg:sticky lg:top-24">
         <Card>
           <div className="flex items-baseline justify-between mb-4">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-ink-600">Percurso</h3>
+            <h3 className="text-sm font-semibold">Percurso</h3>
             <span className="text-sm text-ink-600">
               {trilha.filter((t) => t.tipo === "pergunta").length} de {total}
             </span>
@@ -199,7 +199,7 @@ export function SimuladorFluxo({
         </Card>
 
         <Card>
-          <h3 className="text-xs font-bold uppercase tracking-widest text-ink-600 mb-4">
+          <h3 className="text-sm font-semibold mb-4">
             Fatos acumulados
           </h3>
           <pre className="mono text-xs bg-ink-100 border hairline rounded-sm p-3 overflow-x-auto max-h-72">

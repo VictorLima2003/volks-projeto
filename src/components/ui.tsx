@@ -53,17 +53,42 @@ export function Section({
 // --------------------------------------------------------------------------
 // Button — pílula, no idioma visual da VW
 // --------------------------------------------------------------------------
-type BtnVariant = "primary" | "secondary" | "ghost" | "danger" | "go";
+type BtnVariant = "primary" | "secondary" | "recusa" | "ghost" | "danger" | "go";
 
+/**
+ * O anel de foco é `outline`, não `border`: borda muda a geometria do botão ao
+ * receber foco, e a lista de propriedades que o `transition` do Tailwind cobre
+ * inclui `border-color` mas não `outline-color` — ou seja, como outline ele
+ * aparece instantâneo, que é o requisito de quem navega por teclado.
+ */
+/** `group` para que ícone dentro do botão possa reagir ao hover do botão inteiro. */
 const BTN_BASE =
-  "inline-flex items-center justify-center gap-2 px-6 h-12 rounded-full text-base font-semibold tracking-tight transition";
+  "group inline-flex items-center justify-center gap-2.5 px-6 h-12 rounded-full text-base font-semibold tracking-tight transition " +
+  "outline outline-2 outline-offset-2 outline-transparent " +
+  "active:translate-y-px";
 
+/**
+ * A cor do anel de foco mora aqui, e não na base, porque `outline-vw-blue` e
+ * `outline-ink-0` são o mesmo utilitário: quem vence é a ordem da folha gerada,
+ * não a ordem em que as classes aparecem na string. Declarar uma por variante
+ * remove a disputa.
+ */
 const BTN_STYLES: Record<BtnVariant, string> = {
-  primary: "bg-vw-deep text-ink-0 hover:bg-ink-800",
-  secondary: "bg-ink-0 text-ink-900 border-2 border-vw-deep hover:bg-ink-100",
-  ghost: "bg-transparent text-ink-900 hover:bg-ink-100",
-  danger: "bg-signal-stop text-ink-0 hover:opacity-90",
-  go: "bg-signal-go text-ink-0 hover:opacity-90",
+  primary: "bg-vw-deep text-ink-0 hover:bg-ink-800 focus-visible:outline-vw-blue",
+  secondary: "bg-ink-0 text-ink-900 border border-vw-deep hover:bg-ink-100 focus-visible:outline-vw-blue",
+  /*
+   * Recusa: vermelho, mas vazado.
+   *
+   * Vermelho preenchido ao lado do primário deixa os dois com o mesmo peso, e
+   * quem só varre a tela é atraído pelo bloco de cor mais quente — acaba
+   * clicando em "não" por reflexo. Vazado ele continua inequivocamente vermelho
+   * e continua sendo o segundo botão da linha.
+   */
+  recusa:
+    "bg-ink-0 text-signal-stop border border-signal-stop hover:bg-signal-stop hover:text-ink-0 focus-visible:outline-signal-stop",
+  ghost: "bg-transparent text-ink-900 hover:bg-ink-100 focus-visible:outline-vw-blue",
+  danger: "bg-signal-stop text-ink-0 hover:opacity-90 focus-visible:outline-signal-stop",
+  go: "bg-signal-go text-ink-0 hover:opacity-90 focus-visible:outline-signal-go",
 };
 
 export function Button({
@@ -86,6 +111,51 @@ export function Button({
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * Seta do botão. No hover ela não desliza e volta: a que está em cena sai pela
+ * direita e uma segunda entra pela esquerda, dentro de uma caixa que recorta.
+ * Lê como avanço, e não como tremida.
+ *
+ * Duas cópias de um `<path>` — quatro segmentos não justificam uma biblioteca
+ * de ícones, e misturar bibliotecas é o começo de páginas com três estilos de
+ * ícone ao mesmo tempo.
+ *
+ * Depende do `group` do `BTN_BASE`, e reage também a `focus-visible`: quem
+ * navega por teclado nunca dispara hover e veria um botão morto.
+ */
+export function SetaCta() {
+  const desliza =
+    "absolute inset-0 transition-transform duration-200 ease-out motion-reduce:transition-none";
+  return (
+    <span aria-hidden className="relative block h-4 w-4 overflow-hidden">
+      <Seta className={cn(desliza, "group-hover:translate-x-5 group-focus-visible:translate-x-5")} />
+      <Seta
+        className={cn(
+          desliza,
+          "-translate-x-5 group-hover:translate-x-0 group-focus-visible:translate-x-0",
+        )}
+      />
+    </span>
+  );
+}
+
+function Seta({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      className={cn("h-4 w-4", className)}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M2.5 8h11" />
+      <path d="M9 3.5 13.5 8 9 12.5" />
+    </svg>
   );
 }
 
@@ -122,7 +192,7 @@ export function Badge({ tone = "neutral", children }: { tone?: BadgeTone; childr
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2.5 h-7 rounded-full border text-xs font-bold uppercase tracking-wide",
+        "inline-flex items-center px-2.5 h-7 rounded-full border text-xs font-semibold",
         tones[tone],
       )}
     >
@@ -138,13 +208,21 @@ export function Label(props: LabelHTMLAttributes<HTMLLabelElement>) {
   return (
     <label
       {...props}
-      className={cn("block text-xs font-bold uppercase tracking-wide text-ink-700 mb-2", props.className)}
+      className={cn("block text-sm font-semibold text-ink-700 mb-2", props.className)}
     />
   );
 }
 
+/**
+ * A espessura da borda é a mesma em todos os estados. Trocá-la no foco empurra o
+ * conteúdo em volta um pixel, e o campo "pula" quando você tabula até ele — por
+ * isso o foco muda cor de borda e ganha `outline`, nunca engrossa.
+ */
 const FIELD =
-  "block w-full bg-ink-0 border-2 hairline-strong rounded-sm px-4 text-base text-ink-900 focus:outline-none focus:border-vw-deep transition";
+  "block w-full bg-ink-0 border hairline-strong rounded-sm px-4 text-base text-ink-900 transition " +
+  "focus:border-vw-deep " +
+  "outline outline-2 outline-offset-1 outline-transparent focus-visible:outline-vw-blue " +
+  "disabled:opacity-55 disabled:cursor-not-allowed";
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cn(FIELD, "h-12", props.className)} />;
@@ -170,16 +248,22 @@ export function Table({ children }: { children: ReactNode }) {
 }
 export function THead({ children }: { children: ReactNode }) {
   return (
-    <thead className="bg-ink-100 border-b-2 hairline-strong text-xs uppercase tracking-wide text-ink-700">
+    /* `ink-200` e não `ink-100`: a escala de papel (0/50/100) é quente de
+       propósito e, numa faixa cheia atrás do cabeçalho da tabela, aquele quente
+       lê como bege. Do 200 para cima a escala é cinza-frio, que é o que uma
+       faixa estrutural pede. */
+    <thead className="bg-ink-200 border-b-2 hairline-strong text-sm text-ink-700">
       {children}
     </thead>
   );
 }
 export function TH({ children, className }: { children?: ReactNode; className?: string }) {
-  return <th className={cn("text-left font-bold px-5 py-3.5", className)}>{children}</th>;
+  return <th className={cn("text-left font-semibold px-5 py-3.5", className)}>{children}</th>;
 }
 export function TR({ children, className }: { children: ReactNode; className?: string }) {
-  return <tr className={cn("border-t hairline hover:bg-ink-50", className)}>{children}</tr>;
+  // Mesmo motivo do cabeçalho: o hover era `ink-50`, quente. Cinza a 40% dá o
+  // mesmo realce sem puxar a linha para o bege.
+  return <tr className={cn("border-t hairline hover:bg-ink-200/40", className)}>{children}</tr>;
 }
 export function TD({ children, className }: { children?: ReactNode; className?: string }) {
   return <td className={cn("px-5 py-4 align-middle", className)}>{children}</td>;
@@ -199,17 +283,25 @@ export function Stat({
   hint?: string;
   tone?: BadgeTone;
 }) {
-  const accent: Record<BadgeTone, string> = {
-    neutral: "border-t-ink-900",
-    go: "border-t-signal-go",
-    warn: "border-t-signal-warn",
-    stop: "border-t-signal-stop",
-    vw: "border-t-vw-deep",
+  /*
+   * O sinal mora no número, não num filete grosso no topo.
+   *
+   * O filete de 4px era a coisa mais pesada do tile e disputava com o valor —
+   * quatro ou seis deles lado a lado viravam uma fileira de traços coloridos
+   * antes de virarem números. A cor no próprio valor diz o mesmo com o peso
+   * certo, e todos os degraus de sinal passam de 4,5:1 sobre papel branco.
+   */
+  const cor: Record<BadgeTone, string> = {
+    neutral: "",
+    go: "text-signal-go",
+    warn: "text-signal-warn",
+    stop: "text-signal-stop",
+    vw: "text-vw-deep",
   };
   return (
-    <div className={cn("bg-ink-0 border hairline rounded-md border-t-4 p-6 shadow-card", accent[tone])}>
-      <div className="text-xs font-bold uppercase tracking-wide text-ink-600">{label}</div>
-      <div className="display text-2xl mt-3">{value}</div>
+    <div className="bg-ink-0 border hairline rounded-md p-6 shadow-card">
+      <div className="text-sm font-semibold text-ink-600">{label}</div>
+      <div className={cn("display text-2xl mt-3", cor[tone])}>{value}</div>
       {hint && <div className="text-sm text-ink-600 mt-2.5">{hint}</div>}
     </div>
   );

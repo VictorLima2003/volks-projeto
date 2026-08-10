@@ -3,7 +3,7 @@ import { ReactNode } from "react";
 import { cn } from "./ui";
 import { LogoVW } from "./LogoVW";
 import { SeletorUsuario } from "./SeletorUsuario";
-import { Cabecalho, Migalha, Rodape } from "./Cabecalho";
+import { Corpo, Rodape } from "./Cabecalho";
 
 export type SecaoGestor = "campanhas" | "aprovacoes" | "central" | "dashboard" | null;
 
@@ -20,21 +20,37 @@ const secoes: { id: Exclude<SecaoGestor, null>; label: string; href: string }[] 
  */
 export function ShellGestor({
   secao = null,
-  crumbs,
   title,
   action,
-  largura = "padrao",
+  saudacao,
+  data,
   children,
 }: {
   secao?: SecaoGestor;
-  crumbs?: Migalha[];
   title?: string;
   action?: ReactNode;
-  /** "ampla" solta o limite de leitura — telas de construção precisam do espaço. */
-  largura?: "padrao" | "ampla";
+  /**
+   * Saudação e data, na faixa acima do título. Chegam prontas como texto porque
+   * a saudação depende do cookie de usuário, e ler cookie aqui puxaria
+   * `next/headers` para dentro de um componente que Client Components importam.
+   */
+  saudacao?: string;
+  data?: string;
   children: ReactNode;
 }) {
-  const container = largura === "ampla" ? "max-w-[1600px]" : "max-w-7xl";
+  /*
+   * Um eixo só na área inteira.
+   *
+   * As telas de construção corriam a 1600px enquanto o resto do gestor corria a
+   * 1280 — então a marca, a navegação e o perfil pulavam 73px na horizontal a
+   * cada ida de Campanhas para Pesquisa. É o mesmo defeito que a jornada do
+   * motorista teve, ali entre cabeçalho e conteúdo; aqui, entre telas vizinhas.
+   *
+   * Os 1600 se justificavam por "as telas de construção precisam de espaço", e
+   * não precisam: o construtor é uma lista vertical de blocos, e linha longa
+   * demais atrapalha a leitura em vez de ajudar.
+   */
+  const container = "max-w-7xl";
   return (
     <div className="min-h-screen flex flex-col">
       <div className="h-1 bg-vw-deep" />
@@ -46,10 +62,10 @@ export function ShellGestor({
             aria-label="Volkswagen · área do gestor"
             className="flex items-center gap-3.5 group shrink-0"
           >
+            {/* Só a marca. "Gestor" nomeava a área para quem já está nela — a
+                navegação ao lado e a URL dizem isso, e a palavra gastava espaço
+                para repetir o óbvio. O `aria-label` do link continua dizendo. */}
             <LogoVW decorativo className="w-9 h-9 text-vw-deep transition group-hover:text-ink-900" />
-            <span className="text-xs uppercase tracking-widest text-ink-600 hidden lg:inline">
-              Gestor
-            </span>
           </Link>
 
           <nav className="flex items-center gap-1 overflow-x-auto">
@@ -69,16 +85,24 @@ export function ShellGestor({
             ))}
           </nav>
 
-          <div className="ml-auto shrink-0">
-            <SeletorUsuario />
+          <div className="ml-auto shrink-0 flex items-center gap-6">
+            {/* Data no cabeçalho, como no vendedor: contexto não gasta a
+                primeira linha do conteúdo. */}
+            {data && <span className="text-sm text-ink-600 hidden lg:inline">{data}</span>}
+            {/* Sem lista de pessoas: o menu do perfil tem "Sair" e mais nada. */}
+            <SeletorUsuario trocarDePessoa={false} />
           </div>
         </div>
       </header>
 
       <main className="flex-1">
         <div className={`${container} mx-auto px-6 py-10`}>
-          <Cabecalho crumbs={crumbs} title={title} action={action} />
-          {children}
+          <Corpo
+            title={title}
+            action={action}
+          >
+            {children}
+          </Corpo>
         </div>
       </main>
 

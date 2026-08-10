@@ -2,6 +2,7 @@
 
 import { Badge, Button, Card, Label, Textarea } from "@/components/ui";
 import Link from "next/link";
+import { useAviso } from "@/components/Avisos";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -31,16 +32,15 @@ export function PainelAprovacao({
   meuNome: string;
 }) {
   const router = useRouter();
+  const { avisar } = useAviso();
   const [motivo, setMotivo] = useState("");
   const [mostrarRejeicao, setMostrarRejeicao] = useState(false);
   const [ocupado, setOcupado] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
 
   const bloqueado = !podeAprovar || souOPropositor;
 
   async function decidir(acao: "aprovar" | "rejeitar") {
     setOcupado(true);
-    setErro(null);
     const res = await fetch("/api/rulesets", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
@@ -54,9 +54,15 @@ export function PainelAprovacao({
     const json = await res.json();
     setOcupado(false);
     if (!res.ok) {
-      setErro(json.detalhe ?? json.erro ?? "Falha ao registrar decisão.");
+      avisar(json.detalhe ?? json.erro ?? "Falha ao registrar decisão.", "stop");
       return;
     }
+    avisar(
+      acao === "aprovar"
+        ? `Versão v${proposta.versao} aprovada e ativa.`
+        : `Versão v${proposta.versao} rejeitada.`,
+      acao === "aprovar" ? "go" : "warn",
+    );
     router.refresh();
   }
 
@@ -84,7 +90,7 @@ export function PainelAprovacao({
         </div>
 
         <div className="mt-6 pt-6 border-t hairline">
-          <div className="text-xs font-bold uppercase tracking-widest text-ink-600 mb-3">
+          <div className="text-sm font-semibold text-ink-600 mb-3">
             {proposta.versaoAnterior
               ? `Mudanças em relação à v${proposta.versaoAnterior}${
                   proposta.anteriorEmProducao ? " (em produção hoje)" : ""
@@ -102,15 +108,10 @@ export function PainelAprovacao({
           )}
         </div>
 
-        {erro && (
-          <div className="mt-5 border border-signal-stop/45 bg-signal-stop/10 rounded-sm p-4 text-sm text-signal-stop">
-            {erro}
-          </div>
-        )}
 
         {souOPropositor && (
           <div className="mt-5 border border-signal-warn/45 bg-signal-warn/10 rounded-sm p-4">
-            <div className="text-xs font-bold uppercase tracking-widest text-signal-warn mb-1.5">
+            <div className="text-sm font-semibold text-signal-warn mb-1.5">
               Você propôs esta versão
             </div>
             <p className="text-sm text-ink-800">
@@ -122,11 +123,11 @@ export function PainelAprovacao({
 
         {!bloqueado && (
           <div className="mt-6 flex flex-wrap gap-3 items-start">
-            <Button variant="go" onClick={() => decidir("aprovar")} disabled={ocupado}>
+            <Button onClick={() => decidir("aprovar")} disabled={ocupado}>
               {ocupado ? "Registrando..." : "Aprovar e ativar"}
             </Button>
             <Button
-              variant="secondary"
+              variant="recusa"
               onClick={() => setMostrarRejeicao((v) => !v)}
               disabled={ocupado}
             >

@@ -167,6 +167,19 @@ export interface Hook {
   parametros: ParametroHook[];
   /** Exibido ao respondente enquanto o hook executa. */
   mensagemCarregando: string;
+  /**
+   * Como cada fato retornado deve ser escrito na tela: `{ temRestricao: "Tem
+   * restrição" }`.
+   *
+   * Existe porque a chave é identificador de código e não leva acento. Sem isto,
+   * a interface só podia separar o camelCase e subir a inicial — e `temRestricao`
+   * aparecia como "Tem Restricao", errado em português. Quem sabe escrever o
+   * nome direito é quem escreveu o hook.
+   *
+   * Opcional e parcial: o que não estiver aqui continua caindo na regra
+   * mecânica, e o motor segue sem conhecer nenhum campo por nome.
+   */
+  rotulos?: Record<string, string>;
   /** Corpo de uma função assíncrona. Recebe os parâmetros por nome. */
   codigo: string;
   anexos: AnexoHook[];
@@ -290,6 +303,11 @@ export interface Pedido {
   id: UUID;
   campanhaId: UUID;
   cpf: string;
+  /**
+   * Id do usuário que registrou, como em `propostoPor` do RuleSet. Guardar o
+   * nome solto deixava a autoria envelhecer junto com o cadastro e impedia
+   * filtrar a carteira por quem vendeu.
+   */
   vendedor: string;
   concessionaria: string;
   modelo: string;

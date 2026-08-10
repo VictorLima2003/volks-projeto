@@ -1,4 +1,4 @@
-# Wolks
+# Volkswagen
 
 Plataforma para **construir pesquisas com lógica condicional e decisão automatizada**.
 
@@ -17,7 +17,7 @@ vira demanda de desenvolvimento, e quem entende do negócio fica na fila.
 
 ### A inversão
 
-Wolks não é o formulário. É a ferramenta com que o time de negócio **constrói** o formulário e a
+Volkswagen não é o formulário. É a ferramenta com que o time de negócio **constrói** o formulário e a
 lógica junto. Três peças se encaixam:
 
 **A pesquisa é uma árvore, não uma lista.** Perguntas, condicionais, consultas e telas finais são
@@ -344,30 +344,13 @@ Sem relação entre si, mesmo rótulo. Foi apontado como confuso e está mapeado
 
 ## Onde parou e o que vem
 
-O plano vive em [`docs/roadmap-produto-v2.md`](docs/roadmap-produto-v2.md), com os pedidos
-originais preservados. Estado:
+Passos 1 a 4a estão feitos. O próximo é **4b — desfechos nomeados pelo autor**, que troca o enum
+fixo `ResultadoTipo` por um rótulo que o autor da pesquisa escreve.
 
-| # | Passo | Estado |
-| --- | --- | --- |
-| 1 | Layout do construtor: largura total, abas, estados | feito |
-| 2 | Condicionais genéricas + identificadores | feito |
-| 3 | Hooks de código com Monaco | feito |
-| 4a | Fatos dinâmicos — a Uber virou hook | feito |
-| **4b** | **Desfechos nomeados pelo autor** | **próximo** |
-| 4c | Separar os dois sentidos de "aprovação" | pendente |
-| 5 | Submissões: ver 100% delas, com status técnico | pendente |
-| 6 | Exportação: CSV + API com credenciais | pendente |
-| 7 | Dashboard por pesquisa | fase posterior |
-| — | Visualização em fluxograma | fase 2 |
-
+A tabela de progresso, a ordem dos passos e o porquê de cada dependência vivem em
+[`docs/roadmap-produto-v2.md`](docs/roadmap-produto-v2.md), com os pedidos originais preservados —
+**é o único registro de estado**, e este README não o repete de propósito.
 [`docs/roadmap-produto.md`](docs/roadmap-produto.md) tem a fase anterior, já concluída.
-
-### Sugestão de ordem
-
-**4b antes de 5.** As submissões precisam mostrar "qual desfecho ocorreu"; enquanto o desfecho for
-um enum fixo, a tela nasce presa ao vocabulário errado.
-
-**Persistência antes de 6.** Exportar dados que somem no restart é meio vazio.
 
 ---
 

@@ -23,7 +23,7 @@ type State = {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __WOLKS_STORE__: State | undefined;
+  var __VOLKSWAGEN_STORE__: State | undefined;
 }
 
 function initialState(): State {
@@ -35,10 +35,10 @@ function initialState(): State {
 }
 
 function state(): State {
-  if (!globalThis.__WOLKS_STORE__) {
-    globalThis.__WOLKS_STORE__ = initialState();
+  if (!globalThis.__VOLKSWAGEN_STORE__) {
+    globalThis.__VOLKSWAGEN_STORE__ = initialState();
   }
-  return globalThis.__WOLKS_STORE__!;
+  return globalThis.__VOLKSWAGEN_STORE__!;
 }
 
 
@@ -148,5 +148,5 @@ export function atualizarPedido(id: UUID, patch: Partial<Pedido>) {
 // Reset (útil para demo)
 // --------------------------------------------------------------------------
 export function resetStore() {
-  globalThis.__WOLKS_STORE__ = initialState();
+  globalThis.__VOLKSWAGEN_STORE__ = initialState();
 }

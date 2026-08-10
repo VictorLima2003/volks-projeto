@@ -166,12 +166,32 @@ Deve servir para qualquer pesquisa, não para o caso Uber.
 
 ## Progresso
 
-- [x] **1. Layout da tela de construção** — concluído em 05/08/2026
-- [x] **2. Condicionais genéricas** — concluído em 05/08/2026
-- [x] **3. Hooks de código** — concluído em 06/08/2026
-- [ ] 4. Genericização
-- [ ] 5. Submissões
-- [ ] 6. Exportação
+**Esta tabela é o único registro de onde o projeto parou.** O README aponta para cá em vez de
+repetir o estado — enquanto existiam duas tabelas, elas divergiram (o README já marcava 4a como
+feito enquanto aqui o passo 4 inteiro seguia em aberto).
+
+O passo 4 foi quebrado em três porque as partes têm dependências diferentes: 4a era pré-requisito
+dos hooks, 4b destrava a tela de submissões, e 4c é renomeação sem efeito no motor.
+
+| # | Passo | Estado | Quando |
+| --- | --- | --- | --- |
+| 1 | Layout do construtor: largura total, abas, estados | feito | 05/08/2026 |
+| 2 | Condicionais genéricas + identificadores | feito | 05/08/2026 |
+| 3 | Hooks de código com Monaco | feito | 06/08/2026 |
+| 4a | Fatos dinâmicos — a Uber virou hook | feito | 07/08/2026 |
+| **4b** | **Desfechos nomeados pelo autor** (matar o `ResultadoTipo` fixo) | **próximo** | — |
+| 4c | Separar os dois sentidos de "aprovação" | pendente | — |
+| 5 | Submissões: ver 100% delas, com status técnico | pendente | — |
+| 6 | Exportação: CSV + API com credenciais | pendente | — |
+| 7 | Dashboard por pesquisa | fase posterior | — |
+| — | Visualização em fluxograma | fase 2 | — |
+
+### Duas ordens que não são negociáveis
+
+**4b antes de 5.** A tela de submissões precisa mostrar qual desfecho ocorreu; enquanto o desfecho
+for um enum fixo, ela nasce presa ao vocabulário errado e teria que ser refeita.
+
+**Persistência antes de 6.** Exportar dados que somem no restart do servidor é meio vazio.
 
 ---
 

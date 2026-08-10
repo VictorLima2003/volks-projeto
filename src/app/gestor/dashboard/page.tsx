@@ -1,5 +1,8 @@
 import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, Stat, Table, TD, TH, THead, TR } from "@/components/ui";
+import { ROTULO_PEDIDO_STATUS } from "@/lib/catalogo";
+import { usuarioPorId } from "@/lib/identidade";
+import { dataPorExtenso } from "@/lib/painel";
 import { listarCampanhas, listarPedidos, listarSessoes } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +48,19 @@ export default function Dashboard() {
     porConc.set(p.concessionaria, atual);
   }
 
+  /*
+   * Por vendedor. Só existe desde que o pedido passou a guardar o id de quem
+   * registrou, carimbado pelo servidor — enquanto era um nome digitado na tela,
+   * agrupar por ele daria a soma de quem escreveu o quê.
+   */
+  const porVendedor = new Map<string, { pedidos: number; concluidos: number }>();
+  for (const p of pedidos) {
+    const atual = porVendedor.get(p.vendedor) ?? { pedidos: 0, concluidos: 0 };
+    atual.pedidos++;
+    if (p.status === "concluido") atual.concluidos++;
+    porVendedor.set(p.vendedor, atual);
+  }
+
   const funil = [
     { etapa: "Iniciaram a jornada", n: sessoes.length },
     { etapa: "Concluíram a pesquisa", n: concluidas.length },
@@ -55,7 +71,11 @@ export default function Dashboard() {
   const maxFunil = funil[0]?.n || 1;
 
   return (
-    <ShellGestor secao="dashboard" title="Indicadores" crumbs={[{ label: "Gestor", href: "/gestor" }, { label: "Dashboard" }]}>
+    <ShellGestor
+      secao="dashboard"
+      title="Indicadores"
+      data={dataPorExtenso()}
+    >
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-10">
         <Stat label="Elegíveis" value={elegiveis.length} tone="go" />
         <Stat label="Não elegíveis" value={naoElegiveis.length} tone="stop" />
@@ -136,6 +156,38 @@ export default function Dashboard() {
         </div>
 
         <div>
+          <h3 className="text-lg font-semibold tracking-tight mb-4">Por vendedor</h3>
+          {porVendedor.size === 0 ? (
+            <Card><div className="text-sm text-ink-600">Nenhum pedido registrado ainda.</div></Card>
+          ) : (
+            <Table>
+              <THead>
+                <tr>
+                  <TH>Vendedor</TH>
+                  <TH className="text-right">Pedidos</TH>
+                  <TH className="text-right">Vendas</TH>
+                </tr>
+              </THead>
+              <tbody>
+                {Array.from(porVendedor.entries()).map(([id, v]) => {
+                  const u = usuarioPorId(id);
+                  return (
+                    <TR key={id}>
+                      <TD>
+                        <div className="text-sm">{u.nome}</div>
+                        <div className="text-xs text-ink-600">{u.concessionaria ?? u.area}</div>
+                      </TD>
+                      <TD className="text-right mono">{v.pedidos}</TD>
+                      <TD className="text-right mono">{v.concluidos}</TD>
+                    </TR>
+                  );
+                })}
+              </tbody>
+            </Table>
+          )}
+        </div>
+
+        <div>
           <h3 className="text-lg font-semibold tracking-tight mb-4">Campanhas</h3>
           <Table>
             <THead>
@@ -173,7 +225,7 @@ export default function Dashboard() {
               <div key={p.id} className="flex items-center justify-between border hairline rounded-sm px-4 py-3.5 text-base">
                 <span className="mono text-xs">{p.cpf}</span>
                 <span className="text-ink-700">{p.motivo}</span>
-                <Badge tone="stop">{p.status}</Badge>
+                <Badge tone="stop">{ROTULO_PEDIDO_STATUS[p.status]}</Badge>
               </div>
             ))}
           </div>
