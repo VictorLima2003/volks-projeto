@@ -89,8 +89,7 @@ export function ShellGestor({
             {/* Data no cabeçalho, como no vendedor: contexto não gasta a
                 primeira linha do conteúdo. */}
             {data && <span className="text-sm text-ink-600 hidden lg:inline">{data}</span>}
-            {/* Sem lista de pessoas: o menu do perfil tem "Sair" e mais nada. */}
-            <SeletorUsuario trocarDePessoa={false} />
+            <SeletorUsuario />
           </div>
         </div>
       </header>

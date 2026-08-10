@@ -4,7 +4,7 @@ import { papelLegivel, USUARIOS, USUARIO_PADRAO, Usuario, usuarioDoDocumento } f
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export function SeletorUsuario({ trocarDePessoa = true }: { trocarDePessoa?: boolean }) {
+export function SeletorUsuario() {
   const router = useRouter();
   // Começa no padrão para o HTML do servidor bater com o do cliente;
   // o cookie real é lido logo após a montagem.
@@ -70,14 +70,13 @@ export function SeletorUsuario({ trocarDePessoa = true }: { trocarDePessoa?: boo
           <div className="fixed inset-0 z-40" onClick={() => setAberto(false)} />
           <div className="absolute right-0 top-full mt-2 z-50 w-80 bg-ink-0 border hairline-strong rounded-md shadow-lift p-2">
             {/*
-             * A lista de pessoas só existe onde trocar de pessoa faz parte do
-             * trabalho — no gestor, para ver os dois lados da aprovação. No
-             * vendedor, quem está logado é o vendedor e o menu tem uma coisa só.
+             * Trocar de pessoa é parte do trabalho enquanto não há login: sem
+             * isso não dá para ver os dois lados da aprovação, já que ninguém
+             * aprova a própria proposta, nem para abrir a carteira de um
+             * vendedor. Some quando existir login de verdade.
              */}
-            {trocarDePessoa && (
-              <div className="px-3 py-2 text-sm font-semibold text-ink-600">Entrar como</div>
-            )}
-            {trocarDePessoa && USUARIOS.map((u) => (
+            <div className="px-3 py-2 text-sm font-semibold text-ink-600">Entrar como</div>
+            {USUARIOS.map((u) => (
               <button
                 key={u.id}
                 type="button"
@@ -99,11 +98,9 @@ export function SeletorUsuario({ trocarDePessoa = true }: { trocarDePessoa?: boo
                 </div>
               </button>
             ))}
-            {trocarDePessoa && (
-              <p className="px-3 py-2 text-xs text-ink-600 border-t hairline mt-2">
-                Protótipo sem login. Troque de pessoa para ver os dois lados da aprovação.
-              </p>
-            )}
+            <p className="px-3 py-2 text-xs text-ink-600 border-t hairline mt-2">
+              Protótipo sem login. Troque de pessoa para ver os dois lados da aprovação.
+            </p>
 
             <button
               type="button"

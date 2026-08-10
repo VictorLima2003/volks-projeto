@@ -127,8 +127,7 @@ export function ShellFluxo({
           <MarcaCabecalho href={area.href} rotulo={area.label} />
           <div className="ml-auto flex items-center gap-6">
             {dataCabecalho && <span className="text-sm text-ink-600">{dataCabecalho}</span>}
-            {/* No vendedor o menu tem só "Sair": quem entra aqui é o vendedor. */}
-            {seletorDeUsuario && <SeletorUsuario trocarDePessoa={false} />}
+            {seletorDeUsuario && <SeletorUsuario />}
           </div>
         </div>
       </header>
