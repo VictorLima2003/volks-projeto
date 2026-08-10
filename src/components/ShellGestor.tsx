@@ -17,11 +17,14 @@ import { Corpo, Rodape } from "./Cabecalho";
 export function ShellGestor({
   title,
   action,
+  ajuda,
   data,
   children,
 }: {
   title?: string;
   action?: ReactNode;
+  /** Explicação da tela, ao lado do título. Ver `AjudaDaTela`. */
+  ajuda?: ReactNode;
   /**
    * Data do dia, na barra acima do conteúdo. Chega pronta como texto porque
    * lê o relógio no servidor, e o Shell é importado por Client Components.
@@ -55,7 +58,7 @@ export function ShellGestor({
            * a barra e jogaria o texto para longe do menu que o comanda.
            */}
           <div className="px-8 py-10">
-            <Corpo title={title} action={action}>
+            <Corpo title={title} action={action} ajuda={ajuda}>
               {children}
             </Corpo>
           </div>

@@ -11,16 +11,24 @@ import { ReactNode } from "react";
 export function Cabecalho({
   title,
   action,
+  ajuda,
 }: {
   title?: string;
   action?: ReactNode;
+  /** Explicação da tela, encostada no título. Ver `AjudaDaTela`. */
+  ajuda?: ReactNode;
 }) {
-  if (!title && !action) return null;
+  if (!title && !action && !ajuda) return null;
 
   return (
     <div className="mb-10">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        {title && <h1 className="display text-3xl md:text-4xl">{title}</h1>}
+        {title && (
+          <h1 className="display text-3xl md:text-4xl flex items-center gap-3">
+            {title}
+            {ajuda}
+          </h1>
+        )}
         {action}
       </div>
     </div>
@@ -39,12 +47,14 @@ export function Corpo({
   data,
   title,
   action,
+  ajuda,
   children,
 }: {
   saudacao?: string;
   data?: string;
   title?: string;
   action?: ReactNode;
+  ajuda?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -58,7 +68,7 @@ export function Corpo({
         </div>
       )}
 
-      <Cabecalho title={title} action={action} />
+      <Cabecalho title={title} action={action} ajuda={ajuda} />
 
       {children}
     </>

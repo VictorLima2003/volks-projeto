@@ -537,6 +537,21 @@ por um instante e as persianas surgindo — a dobra piscava de um fundo para o o
 estrangulado em aba de fundo, e sem ele quem abre a página em segundo plano volta para um fundo
 invisível para sempre.
 
+## Explicação mora no título, não no pé da página
+
+Texto que explica **o que a tela é** vive num painel encostado no h1, aberto por um botão de "?".
+Antes eram blocos no rodapé — abaixo de duas tabelas, onde só chega quem rola até o fim, e
+justamente quem já entendeu a tela. A dúvida acontece na chegada.
+
+**Abre por clique, não por passar o mouse.** Passar o mouse não existe no celular, e conteúdo com
+título e lista não cabe num rótulo flutuante que some quando o ponteiro sai do caminho. Fecha por
+Esc e por clique fora, como toda camada sobreposta daqui.
+
+**A linha entre o que vai e o que fica:** explicação de conceito vai para a ajuda ("como o motor
+decide", "o que a central resolve"). **Instrução para agir fica visível** — "copie um CPF e cole na
+tela inicial" é o que a pessoa veio fazer, e esconder atrás de um botão seria esconder a tela.
+Conteúdo que muda com o estado (o que mudou da v1 para a v2) também fica: não é explicação, é dado.
+
 ## Navegação do gestor é lateral
 
 A forma veio da sidebar do **toven**: marca no topo, menu agrupado, perfil no pé, e um estado

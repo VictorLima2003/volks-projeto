@@ -1,3 +1,4 @@
+import { AjudaDaTela, ItemAjuda } from "@/components/AjudaDaTela";
 import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, Stat, Table, TD, TH, THead, TR } from "@/components/ui";
 import { dataPorExtenso } from "@/lib/painel";
@@ -24,6 +25,21 @@ export default function Central() {
   return (
     <ShellGestor
       title="Central de exceções"
+      /* A explicação subiu do pé da página para cá. Lá embaixo, depois de duas
+         tabelas, ela só era lida por quem já tinha entendido a tela. */
+      ajuda={
+        <AjudaDaTela titulo="O que a central resolve">
+          <ItemAjuda termo="CPF fora da base">
+            Confere se a base do parceiro está desatualizada ou se o motorista usa outro documento.
+          </ItemAjuda>
+          <ItemAjuda termo="Divergência de dados">
+            Nome ou cidade não batem. Valida o cadastro antes de liberar a jornada comercial.
+          </ItemAjuda>
+          <ItemAjuda termo="Elegibilidade expirada">
+            Motorista aprovado há muito tempo precisa revalidar antes do pedido.
+          </ItemAjuda>
+        </AjudaDaTela>
+      }
       data={dataPorExtenso()}
     >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
@@ -104,23 +120,6 @@ export default function Central() {
         </Table>
       )}
 
-      <div className="mt-12 border hairline rounded-md p-7 bg-ink-100">
-        <div className="text-sm font-semibold text-ink-600 mb-2">O que a central resolve</div>
-        <div className="grid md:grid-cols-3 gap-6 mt-4 text-sm text-ink-700">
-          <div>
-            <div className="text-ink-900 font-medium mb-1">CPF fora da base</div>
-            Confere se a base Uber está desatualizada ou se o motorista usa outro documento.
-          </div>
-          <div>
-            <div className="text-ink-900 font-medium mb-1">Divergência de dados</div>
-            Nome/cidade não batem. Valida cadastro antes de liberar a jornada comercial.
-          </div>
-          <div>
-            <div className="text-ink-900 font-medium mb-1">Elegibilidade expirada</div>
-            Motorista aprovado há muito tempo precisa revalidar antes do pedido.
-          </div>
-        </div>
-      </div>
     </ShellGestor>
   );
 }

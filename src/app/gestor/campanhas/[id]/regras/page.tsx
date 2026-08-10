@@ -1,3 +1,4 @@
+import { AjudaDaTela, ItemAjuda } from "@/components/AjudaDaTela";
 import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, LinkButton } from "@/components/ui";
 import { diffRuleSets, explicarRegra, resultadoLabel, ruleSetAtivo } from "@/lib/engine";
@@ -25,6 +26,20 @@ export default function Regras({ params }: { params: { id: string } }) {
   return (
     <ShellGestor
       title={`Regras · v${rs.versao}`}
+      ajuda={
+        <AjudaDaTela titulo="Como o motor decide">
+          <ItemAjuda termo="Ordem de prioridade">
+            As regras são avaliadas do menor número para o maior. A primeira que casar com os fatos
+            determina o resultado, e o resto nem chega a ser olhado.
+          </ItemAjuda>
+          <ItemAjuda termo="De onde vêm os fatos">
+            Das respostas da pesquisa (<span className="mono text-vw-deep">resposta.*</span>) e do
+            retorno de cada hook, sob o prefixo dele
+            (<span className="mono text-vw-deep">uber.*</span>,{" "}
+            <span className="mono text-vw-deep">credito.*</span>). Não há terceira origem.
+          </ItemAjuda>
+        </AjudaDaTela>
+      }
       action={
         <div className="flex flex-wrap gap-2">
           <LinkButton href={`/gestor/campanhas/${c.id}/pesquisa`} variant="secondary">
@@ -51,27 +66,21 @@ export default function Regras({ params }: { params: { id: string } }) {
       )}
 
       <div className="grid lg:grid-cols-3 gap-6 mb-8">
-        <Card className="lg:col-span-2">
-          <h3 className="text-lg font-semibold tracking-tight mb-2">Como o motor decide</h3>
-          <p className="text-base text-ink-700">
-            As regras são avaliadas em ordem de prioridade (menor número = mais prioritária).
-            A <strong>primeira</strong> regra que casar com os fatos determina o resultado.
-            Fatos vêm da base Uber (<span className="mono text-vw-deep">uber.*</span>) e das respostas
-            do motorista (<span className="mono text-vw-deep">resposta.*</span>).
-          </p>
-          {mudancas.length > 0 && (
-            <div className="mt-6 pt-6 border-t hairline">
-              <div className="text-sm font-semibold text-ink-600 mb-3">
-                O que mudou da v{rs.versao - 1} para a v{rs.versao}
-              </div>
-              <ul className="space-y-1.5 text-sm">
-                {mudancas.map((m, i) => (
-                  <li key={i} className="mono text-ink-700">{m}</li>
-                ))}
-              </ul>
+        {/* Só o que é desta versão. O "como o motor decide" era explicação de
+            conceito e subiu para a ajuda do título; o que muda de versão para
+            versão continua aqui, porque é conteúdo, não instrução. */}
+        {mudancas.length > 0 && (
+          <Card className="lg:col-span-2">
+            <div className="text-sm font-semibold text-ink-600 mb-3">
+              O que mudou da v{rs.versao - 1} para a v{rs.versao}
             </div>
-          )}
-        </Card>
+            <ul className="space-y-1.5 text-sm">
+              {mudancas.map((m, i) => (
+                <li key={i} className="mono text-ink-700">{m}</li>
+              ))}
+            </ul>
+          </Card>
+        )}
 
         <VersoesPanel
           campanhaId={c.id}

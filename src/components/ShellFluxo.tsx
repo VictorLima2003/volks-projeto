@@ -12,6 +12,7 @@ export function ShellFluxo({
   area,
   title,
   action,
+  ajuda,
   saudacao,
   data,
   dataCabecalho,
@@ -30,6 +31,8 @@ export function ShellFluxo({
   area: { label: string; href: string };
   title?: string;
   action?: ReactNode;
+  /** Explicação da tela, ao lado do título. Ver `AjudaDaTela`. */
+  ajuda?: ReactNode;
   /**
    * Saudação e data, na faixa acima do título — o mesmo arranjo de painel do
    * `ShellGestor`, porque a home do vendedor é um painel como os dele.
@@ -95,6 +98,7 @@ export function ShellFluxo({
                 data={data}
                 title={title}
                 action={action}
+                ajuda={ajuda}
               >
                 {children}
               </Corpo>
@@ -149,6 +153,7 @@ export function ShellFluxo({
               data={data}
               title={title}
               action={action}
+              ajuda={ajuda}
             >
               {children}
             </Corpo>
