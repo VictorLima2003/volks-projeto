@@ -24,7 +24,6 @@ export default function CampanhaOverview({ params }: { params: { id: string } })
 
   return (
     <ShellGestor
-      secao="campanhas"
       title={c.nome}
       action={
         <div className="flex flex-wrap gap-2">

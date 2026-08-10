@@ -1,111 +1,68 @@
-import Link from "next/link";
 import { ReactNode } from "react";
-import { cn } from "./ui";
-import { LogoVW } from "./LogoVW";
-import { SeletorUsuario } from "./SeletorUsuario";
+import { BarraLateral } from "./BarraLateral";
 import { Corpo, Rodape } from "./Cabecalho";
-
-export type SecaoGestor = "campanhas" | "aprovacoes" | "central" | "dashboard" | null;
-
-const secoes: { id: Exclude<SecaoGestor, null>; label: string; href: string }[] = [
-  { id: "campanhas",  label: "Campanhas",  href: "/gestor" },
-  { id: "aprovacoes", label: "Aprovações", href: "/gestor/aprovacoes" },
-  { id: "central",    label: "Central",    href: "/gestor/central" },
-  { id: "dashboard",  label: "Dashboard",  href: "/gestor/dashboard" },
-];
 
 /**
  * Área do gestor — a única com navegação interna, porque é a única que tem
  * várias seções. Motorista e vendedor são fluxos focados e não têm menu.
+ *
+ * A navegação é lateral desde que a área passou a ter duas famílias de seção:
+ * o que é de campanha e o que é do sistema. Numa fileira horizontal os dois
+ * grupos viravam uma lista só, e a régua de pílulas já estava no limite.
+ *
+ * O filete navy do topo saiu junto: com a lateral no lugar, ele começava depois
+ * dela e lia como um fragmento solto em vez de faixa de marca. A presença da
+ * marca agora é a própria barra.
  */
 export function ShellGestor({
-  secao = null,
   title,
   action,
-  saudacao,
   data,
   children,
 }: {
-  secao?: SecaoGestor;
   title?: string;
   action?: ReactNode;
   /**
-   * Saudação e data, na faixa acima do título. Chegam prontas como texto porque
-   * a saudação depende do cookie de usuário, e ler cookie aqui puxaria
-   * `next/headers` para dentro de um componente que Client Components importam.
+   * Data do dia, na barra acima do conteúdo. Chega pronta como texto porque
+   * lê o relógio no servidor, e o Shell é importado por Client Components.
    */
-  saudacao?: string;
   data?: string;
   children: ReactNode;
 }) {
-  /*
-   * Um eixo só na área inteira.
-   *
-   * As telas de construção corriam a 1600px enquanto o resto do gestor corria a
-   * 1280 — então a marca, a navegação e o perfil pulavam 73px na horizontal a
-   * cada ida de Campanhas para Pesquisa. É o mesmo defeito que a jornada do
-   * motorista teve, ali entre cabeçalho e conteúdo; aqui, entre telas vizinhas.
-   *
-   * Os 1600 se justificavam por "as telas de construção precisam de espaço", e
-   * não precisam: o construtor é uma lista vertical de blocos, e linha longa
-   * demais atrapalha a leitura em vez de ajudar.
-   */
-  const container = "max-w-7xl";
   return (
-    <div className="min-h-screen flex flex-col">
-      <div className="h-1 bg-vw-deep" />
+    /*
+     * `items-start` para a barra lateral poder ser `sticky`: num flex esticado
+     * ela ganha altura total e o `sticky` não tem para onde correr.
+     */
+    <div className="min-h-screen flex items-start">
+      <BarraLateral />
 
-      <header className="border-b hairline sticky top-0 z-30 bg-ink-0/97 backdrop-blur">
-        <div className={`${container} mx-auto px-6 h-20 flex items-center gap-8`}>
-          <Link
-            href="/gestor"
-            aria-label="Volkswagen · área do gestor"
-            className="flex items-center gap-3.5 group shrink-0"
-          >
-            {/* Só a marca. "Gestor" nomeava a área para quem já está nela — a
-                navegação ao lado e a URL dizem isso, e a palavra gastava espaço
-                para repetir o óbvio. O `aria-label` do link continua dizendo. */}
-            <LogoVW decorativo className="w-9 h-9 text-vw-deep transition group-hover:text-ink-900" />
-          </Link>
+      <div className="flex-1 min-w-0 min-h-screen flex flex-col">
+        {/*
+         * Barra do conteúdo. Ficou só com a data porque a marca e o perfil
+         * mudaram para a lateral. Ela é renderizada mesmo vazia: é a altura dela
+         * que alinha o filete horizontal com o que separa a marca do menu ao
+         * lado. Sem isso, as telas sem data começam 80px acima das outras.
+         */}
+        <div className="border-b hairline h-20 flex items-center justify-end px-8 shrink-0">
+          {data && <span className="text-sm text-ink-600">{data}</span>}
+        </div>
 
-          <nav className="flex items-center gap-1 overflow-x-auto">
-            {secoes.map((s) => (
-              <Link
-                key={s.id}
-                href={s.href}
-                className={cn(
-                  "px-4 h-10 inline-flex items-center rounded-full text-base tracking-tight transition whitespace-nowrap",
-                  secao === s.id
-                    ? "bg-vw-deep text-ink-0"
-                    : "text-ink-700 hover:text-ink-900 hover:bg-ink-100",
-                )}
-              >
-                {s.label}
-              </Link>
-            ))}
-          </nav>
-
-          <div className="ml-auto shrink-0 flex items-center gap-6">
-            {/* Data no cabeçalho, como no vendedor: contexto não gasta a
-                primeira linha do conteúdo. */}
-            {data && <span className="text-sm text-ink-600 hidden lg:inline">{data}</span>}
-            <SeletorUsuario />
+        <main className="flex-1">
+          {/*
+           * Sem `max-w` e sem centralizar: o conteúdo começa onde a lateral
+           * termina. Centralizar aqui abriria uma margem esquerda gigante contra
+           * a barra e jogaria o texto para longe do menu que o comanda.
+           */}
+          <div className="px-8 py-10">
+            <Corpo title={title} action={action}>
+              {children}
+            </Corpo>
           </div>
-        </div>
-      </header>
+        </main>
 
-      <main className="flex-1">
-        <div className={`${container} mx-auto px-6 py-10`}>
-          <Corpo
-            title={title}
-            action={action}
-          >
-            {children}
-          </Corpo>
-        </div>
-      </main>
-
-      <Rodape />
+        <Rodape colado />
+      </div>
     </div>
   );
 }

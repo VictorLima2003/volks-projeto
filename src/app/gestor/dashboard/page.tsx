@@ -72,7 +72,6 @@ export default function Dashboard() {
 
   return (
     <ShellGestor
-      secao="dashboard"
       title="Indicadores"
       data={dataPorExtenso()}
     >

@@ -45,7 +45,6 @@ export default function NovaCampanha() {
 
   return (
     <ShellGestor
-      secao="campanhas"
       title="Nova campanha"
     >
       <form onSubmit={enviar} className="grid lg:grid-cols-3 gap-6 items-start">

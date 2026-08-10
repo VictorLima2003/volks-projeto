@@ -33,7 +33,6 @@ export default function GestorHome() {
 
   return (
     <ShellGestor
-      secao="campanhas"
       /* O cumprimento é o título, como na home do vendedor. "Campanhas" já está
          aceso na navegação do topo — o h1 repetia a aba selecionada. */
       title={`Olá, ${usuarioAtual().nome.split(" ")[0]}`}

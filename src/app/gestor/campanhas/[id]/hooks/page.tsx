@@ -14,7 +14,6 @@ export default function PaginaHooks({ params }: { params: { id: string } }) {
 
   return (
     <ShellGestor
-      secao="campanhas"
       title="Hooks de código"
     >
       <GerenciadorHooks

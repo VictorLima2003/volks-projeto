@@ -13,7 +13,6 @@ export default function EditarRegras({ params }: { params: { id: string } }) {
 
   return (
     <ShellGestor
-      secao="campanhas"
       title="Editar regras"
     >
       <p className="text-base text-ink-600 max-w-3xl mb-8">

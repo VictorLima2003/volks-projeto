@@ -55,7 +55,6 @@ export default function Aprovacoes() {
 
   return (
     <ShellGestor
-      secao="aprovacoes"
       title="Aprovações"
       data={dataPorExtenso()}
     >

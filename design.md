@@ -537,6 +537,35 @@ por um instante e as persianas surgindo — a dobra piscava de um fundo para o o
 estrangulado em aba de fundo, e sem ele quem abre a página em segundo plano volta para um fundo
 invisível para sempre.
 
+## Navegação do gestor é lateral
+
+A forma veio da sidebar do **toven**: marca no topo, menu agrupado, perfil no pé, e um estado
+recolhido só de ícones. A linguagem visual é a nossa — filete de 1px, navy, Inter, sem caixa alta.
+
+Ela substituiu o menu horizontal porque a área deixou de caber nele. Com a **Biblioteca** entrando ao
+lado de Campanhas, Aprovações, Central e Indicadores, a fileira de pílulas viraria régua de rolagem.
+Menu vertical cresce para baixo, que é para onde sobra espaço.
+
+**Dois grupos, porque são duas naturezas.** O primeiro é o trabalho do dia; a Biblioteca é o que
+pertence ao sistema e não à campanha — fontes de dado, pesquisas, réguas, simulador. Os quatro estão
+marcados como "breve": hoje moram dentro de cada campanha, copiados, e movê-los é refatoração de
+modelo que ainda não foi feita. A navegação mostra o destino e admite que não chegou lá, em vez de
+esconder o plano.
+
+**O filete navy do topo saiu.** Com a lateral no lugar ele começava depois dela e lia como fragmento
+solto. A presença da marca agora é a própria barra.
+
+**Duas armadilhas de layout, ambas medidas:**
+
+- **Valor arbitrário que não chega a existir.** `w-[4.5rem]` não foi gerado, e a barra recolhia os
+  itens sem recolher a si mesma. Degrau da escala (`w-20`) resolve e não depende do scanner.
+- **Item de flex tem largura mínima automática igual ao conteúdo**, e ela vence a largura declarada.
+  Sem `min-w-0`, a barra ficava nos 256px do item mais largo mesmo com `w-20` aplicado.
+
+Medir isso exigiu **desligar a transição antes de ler**: com `transition-[width]`, o painel de
+preview reporta o valor inicial enquanto não compõe quadros, e a barra parecia travada em 256px
+quando já estava em 80.
+
 ## A área do gestor tem um eixo só
 
 Todas as telas do gestor correm no mesmo container de 1280px. Não existe mais `largura="ampla"`.

@@ -23,7 +23,6 @@ export default function Central() {
 
   return (
     <ShellGestor
-      secao="central"
       title="Central de exceções"
       data={dataPorExtenso()}
     >

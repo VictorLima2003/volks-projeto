@@ -14,7 +14,6 @@ export default function PaginaPesquisa({ params }: { params: { id: string } }) {
 
   return (
     <ShellGestor
-      secao="campanhas"
       title="Construtor de pesquisa"
     >
       <ConstrutorPesquisa

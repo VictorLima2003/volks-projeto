@@ -24,7 +24,6 @@ export default function Regras({ params }: { params: { id: string } }) {
 
   return (
     <ShellGestor
-      secao="campanhas"
       title={`Regras · v${rs.versao}`}
       action={
         <div className="flex flex-wrap gap-2">

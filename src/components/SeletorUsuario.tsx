@@ -4,7 +4,7 @@ import { papelLegivel, USUARIOS, USUARIO_PADRAO, Usuario, usuarioDoDocumento } f
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-export function SeletorUsuario() {
+export function SeletorUsuario({ compacto = false }: { compacto?: boolean }) {
   const router = useRouter();
   // Começa no padrão para o HTML do servidor bater com o do cliente;
   // o cookie real é lido logo após a montagem.
@@ -56,13 +56,23 @@ export function SeletorUsuario() {
       <button
         type="button"
         onClick={() => setAberto((a) => !a)}
-        className="flex items-center gap-2.5 h-11 pl-1.5 pr-3 rounded-full border hairline-strong hover:border-vw-deep transition"
+        /* Recolhido, só a inicial: o pílula inteira estourava a largura da barra
+           lateral e vazava por cima do conteúdo. */
+        title={compacto ? atual.nome : undefined}
+        className={
+          "flex items-center rounded-full border hairline-strong hover:border-vw-deep transition " +
+          (compacto ? "h-11 w-11 justify-center" : "gap-2.5 h-11 pl-1.5 pr-3")
+        }
       >
-        <span className="w-8 h-8 rounded-full bg-vw-deep text-ink-0 text-xs font-bold flex items-center justify-center">
+        <span className="w-8 h-8 rounded-full bg-vw-deep text-ink-0 text-xs font-bold flex items-center justify-center shrink-0">
           {iniciais}
         </span>
-        <span className="text-sm font-semibold hidden lg:inline">{atual.nome}</span>
-        <span className="text-ink-600 text-xs" aria-hidden="true">▾</span>
+        {!compacto && (
+          <>
+            <span className="text-sm font-semibold hidden lg:inline">{atual.nome}</span>
+            <span className="text-ink-600 text-xs" aria-hidden="true">▾</span>
+          </>
+        )}
       </button>
 
       {aberto && (
