@@ -1,6 +1,5 @@
 import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, Stat } from "@/components/ui";
-import { dataPorExtenso } from "@/lib/painel";
 import { diffRuleSets } from "@/lib/engine";
 import { podeAprovar, usuarioPorId } from "@/lib/identidade";
 import { usuarioAtual } from "@/lib/identidade-server";
@@ -56,7 +55,6 @@ export default function Aprovacoes() {
   return (
     <ShellGestor
       title="Aprovações"
-      data={dataPorExtenso()}
     >
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-10">
         <Stat label="Aguardando aprovação" value={pendentes.length} tone={pendentes.length ? "warn" : "neutral"} />

@@ -1,6 +1,5 @@
 import { ShellFluxo } from "@/components/ShellFluxo";
 import { usuarioAtual } from "@/lib/identidade-server";
-import { dataPorExtenso } from "@/lib/painel";
 import { listarPedidos } from "@/lib/store";
 import { maisRecentes, TabelaPedidos } from "../tabela-pedidos";
 
@@ -20,7 +19,6 @@ export default function PedidosDaCarteira() {
       area={{ label: "Vendedor", href: "/vendedor" }}
       seletorDeUsuario
       title="Pedidos da minha carteira"
-      dataCabecalho={dataPorExtenso()}
     >
       <p className="text-base text-ink-700 mb-8">
         {pedidos.length === 1 ? "1 pedido" : `${pedidos.length} pedidos`} na carteira, do mais

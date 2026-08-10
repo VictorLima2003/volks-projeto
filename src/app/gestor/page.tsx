@@ -2,7 +2,6 @@ import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, LinkButton, Stat } from "@/components/ui";
 import { ruleSetAtivo } from "@/lib/engine";
 import { usuarioAtual } from "@/lib/identidade-server";
-import { dataPorExtenso, saudacaoAgora } from "@/lib/painel";
 import { listarCampanhas, listarPedidos, listarSessoes } from "@/lib/store";
 import Link from "next/link";
 
@@ -37,7 +36,6 @@ export default function GestorHome() {
          aceso na navegação do topo — o h1 repetia a aba selecionada. */
       title={`Olá, ${usuarioAtual().nome.split(" ")[0]}`}
       action={<LinkButton href="/gestor/campanhas/nova">+ Nova campanha</LinkButton>}
-      data={dataPorExtenso()}
     >
       {kpis.pendentes > 0 && (
         <div className="border border-signal-warn/45 bg-signal-warn/10 rounded-md p-5 mb-8 flex flex-wrap items-center gap-4">

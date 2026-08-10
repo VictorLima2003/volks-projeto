@@ -2,7 +2,6 @@ import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, Stat, Table, TD, TH, THead, TR } from "@/components/ui";
 import { ROTULO_PEDIDO_STATUS } from "@/lib/catalogo";
 import { usuarioPorId } from "@/lib/identidade";
-import { dataPorExtenso } from "@/lib/painel";
 import { listarCampanhas, listarPedidos, listarSessoes } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -73,7 +72,6 @@ export default function Dashboard() {
   return (
     <ShellGestor
       title="Indicadores"
-      data={dataPorExtenso()}
     >
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-10">
         <Stat label="Elegíveis" value={elegiveis.length} tone="go" />

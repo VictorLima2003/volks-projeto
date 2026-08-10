@@ -567,8 +567,17 @@ marcados como "breve": hoje moram dentro de cada campanha, copiados, e movê-los
 modelo que ainda não foi feita. A navegação mostra o destino e admite que não chegou lá, em vez de
 esconder o plano.
 
-**O filete navy do topo saiu.** Com a lateral no lugar ele começava depois dela e lia como fragmento
-solto. A presença da marca agora é a própria barra.
+**O filete navy do topo saiu, e depois a barra de topo e o rodapé inteiros.** Com a lateral
+carregando marca, navegação e perfil, as duas faixas horizontais não tinham o que dizer — sobrava
+numa a data e na outra o crédito, e as duas roubavam altura de tela de trabalho. A área do gestor é
+só barra lateral e conteúdo.
+
+**A marca na lateral não escreve o nome da área.** "Gestor" nomeava para quem já está dentro; o
+`aria-label` do link continua dizendo, para quem usa leitor de tela. Vale a mesma regra do cabeçalho
+do vendedor.
+
+**A data saiu das duas áreas.** No gestor, junto com a barra que a segurava; no vendedor, só ela — o
+cabeçalho continua, com a marca e o perfil.
 
 **Duas armadilhas de layout, ambas medidas:**
 

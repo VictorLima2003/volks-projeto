@@ -1,7 +1,6 @@
 import { AjudaDaTela, ItemAjuda } from "@/components/AjudaDaTela";
 import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, Stat, Table, TD, TH, THead, TR } from "@/components/ui";
-import { dataPorExtenso } from "@/lib/painel";
 import { listarSessoes, listarCampanhas } from "@/lib/store";
 import Link from "next/link";
 
@@ -40,7 +39,6 @@ export default function Central() {
           </ItemAjuda>
         </AjudaDaTela>
       }
-      data={dataPorExtenso()}
     >
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
         <Stat label="Na fila de análise" value={excecoes.length} tone="warn" />

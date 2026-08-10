@@ -1,7 +1,6 @@
 import { ShellFluxo } from "@/components/ShellFluxo";
 import { Card, Stat } from "@/components/ui";
 import { usuarioAtual } from "@/lib/identidade-server";
-import { dataPorExtenso } from "@/lib/painel";
 import { listarPedidos, listarSessoes } from "@/lib/store";
 import Link from "next/link";
 import { BuscaCpfForm } from "./busca-form";
@@ -44,7 +43,6 @@ export default function VendedorHome() {
        * mesmo motivo: contexto não precisa da primeira linha do conteúdo.
        */
       title={`Olá, ${eu.nome.split(" ")[0]}`}
-      dataCabecalho={dataPorExtenso()}
     >
       {/* Sem o filete grosso no topo: quatro contadores lado a lado não precisam
           de quatro traços coloridos disputando com o número. */}

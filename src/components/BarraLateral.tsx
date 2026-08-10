@@ -87,11 +87,12 @@ export function BarraLateral() {
         recolhida ? "w-20" : "w-64",
       )}
     >
-      <div className="h-20 flex items-center gap-3 px-5 border-b hairline shrink-0">
+      {/* Só a marca. "Gestor" nomeava a área para quem já está dentro dela; o
+          `aria-label` do link continua dizendo, para quem usa leitor de tela. */}
+      <div className="h-20 flex items-center px-5 border-b hairline shrink-0">
         <Link href="/gestor" aria-label="Volkswagen · área do gestor" className="shrink-0">
           <LogoVW decorativo className="w-9 h-9 text-vw-deep" />
         </Link>
-        {!recolhida && <span className="text-sm font-semibold truncate">Gestor</span>}
       </div>
 
       <nav className="flex-1 overflow-y-auto py-5">

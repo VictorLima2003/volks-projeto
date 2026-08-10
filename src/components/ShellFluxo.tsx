@@ -15,7 +15,6 @@ export function ShellFluxo({
   ajuda,
   saudacao,
   data,
-  dataCabecalho,
   seletorDeUsuario = false,
   topo,
   largura = "larga",
@@ -129,10 +128,11 @@ export function ShellFluxo({
           }
         >
           <MarcaCabecalho href={area.href} rotulo={area.label} />
-          <div className="ml-auto flex items-center gap-6">
-            {dataCabecalho && <span className="text-sm text-ink-600">{dataCabecalho}</span>}
-            {seletorDeUsuario && <SeletorUsuario />}
-          </div>
+          {seletorDeUsuario && (
+            <div className="ml-auto">
+              <SeletorUsuario />
+            </div>
+          )}
         </div>
       </header>
 
