@@ -28,10 +28,9 @@ export default function CampanhaOverview({ params }: { params: { id: string } })
       title={c.nome}
       action={
         <div className="flex flex-wrap gap-2">
-          <LinkButton href={`/gestor/campanhas/${c.id}/base`} variant="secondary">Base Uber</LinkButton>
           <LinkButton href={`/gestor/campanhas/${c.id}/hooks`} variant="secondary">Hooks</LinkButton>
           <LinkButton href={`/gestor/campanhas/${c.id}/pesquisa`} variant="secondary">Pesquisa</LinkButton>
-          <LinkButton href={`/gestor/campanhas/${c.id}/simulador`} variant="secondary">Simulador</LinkButton>
+          <LinkButton href={`/gestor/campanhas/${c.id}/pesquisa`} variant="secondary">Simulador</LinkButton>
           <LinkButton href={`/gestor/campanhas/${c.id}/regras`}>Regras (v{rs.versao})</LinkButton>
         </div>
       }

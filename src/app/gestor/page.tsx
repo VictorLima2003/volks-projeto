@@ -145,11 +145,10 @@ export default function GestorHome() {
 
               <div className="mt-auto pt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t hairline">
                 {[
-                  { l: "Base", h: `/gestor/campanhas/${c.id}/base` },
                   { l: "Hooks", h: `/gestor/campanhas/${c.id}/hooks` },
                   { l: "Pesquisa", h: `/gestor/campanhas/${c.id}/pesquisa` },
                   { l: `Regras v${rs.versao}`, h: `/gestor/campanhas/${c.id}/regras` },
-                  { l: "Simulador", h: `/gestor/campanhas/${c.id}/simulador` },
+                  { l: "Simulador", h: `/gestor/campanhas/${c.id}/pesquisa` },
                 ].map((a) => (
                   <Link
                     key={a.l}

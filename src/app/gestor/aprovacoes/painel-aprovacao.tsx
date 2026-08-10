@@ -75,7 +75,7 @@ export function PainelAprovacao({
           <span className="display-sm text-2xl">v{proposta.versao}</span>
           <span className="text-base text-ink-700">{proposta.campanhaNome}</span>
           <Link
-            href={`/gestor/campanhas/${proposta.campanhaId}/simulador`}
+            href={`/gestor/campanhas/${proposta.campanhaId}/pesquisa`}
             className="ml-auto text-sm font-semibold text-vw-deep underline hover:no-underline"
           >
             Simular antes de decidir →

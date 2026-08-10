@@ -28,7 +28,7 @@ export default function Regras({ params }: { params: { id: string } }) {
       title={`Regras · v${rs.versao}`}
       action={
         <div className="flex flex-wrap gap-2">
-          <LinkButton href={`/gestor/campanhas/${c.id}/simulador`} variant="secondary">
+          <LinkButton href={`/gestor/campanhas/${c.id}/pesquisa`} variant="secondary">
             Simular
           </LinkButton>
           <LinkButton href={`/gestor/campanhas/${c.id}/regras/editar`}>Editar regras</LinkButton>
