@@ -1,26 +1,25 @@
 "use client";
 
 import { MarcaCarregando } from "@/components/MarcaCarregando";
-import {
-  CartaoCampanha,
-  CartoesNumericos,
-  Veredito,
-  type Tom,
-} from "@/components/ResultadoDecisao";
+import { TelaDeDesfecho, type Tom } from "@/components/ResultadoDecisao";
 import { ShellFluxo } from "@/components/ShellFluxo";
 import { useTransicao } from "@/components/Transicao";
 import { Button, cn, Input, Label } from "@/components/ui";
 import {
   montarFatos,
   perguntasVisiveis,
+  preencherTexto,
   proximoPasso,
   resolverArgumentos,
   rotularFato,
 } from "@/lib/engine";
 import {
+  acharDesfecho,
+  Bloco,
   BlocoFeedback,
   BlocoPergunta,
-  Campanha,
+  Desfecho,
+  Pesquisa,
   DecisaoResultado,
   ehConsulta,
   ehFeedback,
@@ -30,11 +29,15 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
-type CampanhaLite = Pick<Campanha, "id" | "nome" | "modelos" | "concessionaria" | "blocos"> & {
+type PesquisaLite = Pick<Pesquisa, "id" | "nome"> & { blocos: Bloco[] } & {
   /** Mensagem de carregamento de cada hook, por id. Vem do `/api/lookup`. */
   carregamentos: Record<string, string>;
   /** Rótulo de exibição por caminho de fato: `credito.temRestricao` → "Tem restrição". */
   rotulos: Record<string, string>;
+  /** Identificador que a capa colheu, se colheu. Ausente quando ela só convida. */
+  campoDaCapa?: string;
+  /** Os fins possíveis desta pesquisa — de onde sai o texto da tela final. */
+  desfechos: Desfecho[];
 };
 
 /**
@@ -65,8 +68,17 @@ type Fase = "estavel" | "sai" | "entra";
 const DUR_SAIDA = 170;
 const DUR_ENTRADA = 260;
 
-/** Campos preenchidos pelo sistema — não voltamos para eles. */
-const AUTOMATICOS = new Set(["cpf"]);
+/**
+ * Campos que já chegaram respondidos, vindos da capa.
+ *
+ * Era uma lista fixa com `"cpf"` dentro — o único lugar da jornada que sabia o
+ * nome de um campo do caso de uso. Agora sai do que a capa mandou: se a pesquisa
+ * abre por convite, nada chega pronto, o CPF é perguntado como qualquer outra
+ * pergunta, e este conjunto nasce vazio sozinho.
+ */
+function camposDaCapa(respostasIniciais: Record<string, unknown>) {
+  return new Set(Object.keys(respostasIniciais));
+}
 
 /**
  * Primeiro nome, quando algum hook trouxer um campo `nome`.
@@ -181,10 +193,21 @@ function BotaoFinalizar() {
 
 function JornadaInner() {
   const sp = useSearchParams();
-  const cpf = sp.get("cpf") ?? "";
-  const campanhaId = sp.get("campanha") ?? "";
+  const pesquisaId = sp.get("pesquisa") ?? "";
 
-  const [campanha, setCampanha] = useState<CampanhaLite | null>(null);
+  /*
+   * O id desta submissão, criado no navegador ao abrir a jornada.
+   *
+   * Ele existe antes de qualquer resposta: é o que permite registrar quem
+   * parou no meio. `useState` com função para nascer uma vez só — recriar a
+   * cada render abriria uma submissão nova a cada tecla.
+   */
+  const [sessaoId] = useState(
+    () => `s_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+  );
+  const [pesquisa, setPesquisa] = useState<PesquisaLite | null>(null);
+  /** Por que não veio pesquisa: fora do ar, ou endereço errado mesmo. */
+  const [motivo, setMotivo] = useState<string | null>(null);
   const [respostas, setRespostas] = useState<Record<string, unknown>>({});
   const [carregando, setCarregando] = useState(true);
   const [enviando, setEnviando] = useState(false);
@@ -247,29 +270,83 @@ function JornadaInner() {
     return () => clearTimeout(t);
   }, []);
 
+  /*
+   * O que a capa já respondeu.
+   *
+   * Qual campo ela colheu vem da própria pesquisa, não de um nome combinado
+   * aqui: o parâmetro da URL leva o identificador configurado no cartão. Vazio
+   * quando a capa só convida — e aí tudo é perguntado na jornada.
+   */
+  const [respostasDaCapa, setRespostasDaCapa] = useState<Record<string, unknown>>({});
+  const automaticos = useMemo(() => camposDaCapa(respostasDaCapa), [respostasDaCapa]);
+
+  /*
+   * Quem é a pessoa, para a sessão.
+   *
+   * `cpf` como nome da chave é dívida conhecida: a sessão é indexada por ele em
+   * `/api/decidir` e no store. O valor, porém, já é agnóstico — é o que a capa
+   * colheu, ou a resposta correspondente dentro da jornada.
+   */
+  const identificador = useMemo(() => {
+    const campo = pesquisa?.campoDaCapa ?? "cpf";
+    const v = respostas[campo] ?? respostasDaCapa[campo];
+    return typeof v === "string" ? v : "";
+  }, [pesquisa, respostas, respostasDaCapa]);
+
   useEffect(() => {
     let vivo = true;
-    fetch(`/api/lookup?cpf=${encodeURIComponent(cpf)}&campanha=${encodeURIComponent(campanhaId)}`)
+    /* A prévia atravessa a jornada inteira: quem está conferindo antes de
+       publicar não deveria esbarrar na trava no segundo passo. */
+    const previa = sp.get("previa") === "1" ? "&previa=1" : "";
+    fetch(`/api/lookup?pesquisa=${encodeURIComponent(pesquisaId)}${previa}`)
       .then((r) => r.json())
       .then((json) => {
         if (!vivo) return;
-        setCampanha(json.campanha ?? null);
-        setRespostas({ cpf });
+        const p: PesquisaLite | null = json.pesquisa ?? null;
+        setPesquisa(p);
+        setMotivo(p ? null : (json.erro ?? null));
+        const campo = p?.campoDaCapa;
+        const daCapa = campo && sp.get(campo) ? { [campo]: sp.get(campo) as string } : {};
+        setRespostasDaCapa(daCapa);
+        setRespostas(daCapa);
         setCarregando(false);
       });
     return () => { vivo = false; };
-  }, [cpf, campanhaId]);
+  }, [pesquisaId, sp]);
 
   const fatos = useMemo(
     () => montarFatos(respostas, externos),
     [respostas, externos],
   );
 
+  /*
+   * Registra o percurso enquanto ele acontece.
+   *
+   * Roda ao abrir e a cada resposta ou consulta. Sem `await` e sem bloquear a
+   * tela: o registro é para quem olha depois, e uma falha aqui não pode
+   * atrapalhar quem está respondendo. Por isso o `catch` vazio — a submissão
+   * fica incompleta, a pessoa continua.
+   */
+  useEffect(() => {
+    if (!pesquisa || carregando) return;
+    fetch("/api/sessao", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        pesquisaId,
+        sessaoId,
+        identificador,
+        respostas,
+        externos,
+      }),
+    }).catch(() => {});
+  }, [pesquisa, carregando, pesquisaId, sessaoId, identificador, respostas, externos]);
+
   /** Pode ser uma pergunta a fazer ou uma consulta a disparar. */
   const passo = useMemo(() => {
-    if (!campanha) return null;
-    return proximoPasso(campanha.blocos, fatos, consultasFeitas);
-  }, [campanha, fatos, consultasFeitas]);
+    if (!pesquisa) return null;
+    return proximoPasso(pesquisa.blocos, fatos, consultasFeitas);
+  }, [pesquisa, fatos, consultasFeitas]);
 
   /**
    * Campos legíveis trazidos pelos hooks. A chave carrega o prefixo
@@ -294,8 +371,8 @@ function JornadaInner() {
   const telaFinal = passo && ehFeedback(passo) ? passo : null;
 
   const visiveis = useMemo(
-    () => (campanha ? perguntasVisiveis(campanha.blocos, fatos) : []),
-    [campanha, fatos],
+    () => (pesquisa ? perguntasVisiveis(pesquisa.blocos, fatos) : []),
+    [pesquisa, fatos],
   );
 
   const respondida = useCallback(
@@ -331,17 +408,17 @@ function JornadaInner() {
    * que a consulta achou quem devia achar, dita na primeira frase.
    */
   const saudacao = useMemo(() => {
-    const primeiraDaPessoa = visiveis.findIndex((p) => !AUTOMATICOS.has(p.campo));
+    const primeiraDaPessoa = visiveis.findIndex((p) => !automaticos.has(p.campo));
     if (primeiraDaPessoa < 0) return null;
     if ((indiceManual ?? progresso.feitas) !== primeiraDaPessoa) return null;
     return primeiroNome(contextoConhecido);
-  }, [visiveis, indiceManual, progresso.feitas, contextoConhecido]);
+  }, [visiveis, indiceManual, progresso.feitas, contextoConhecido, automaticos]);
 
   /** Pergunta imediatamente anterior à que está em cena, se houver e se for da pessoa. */
   const alvoDoVoltar = useMemo(() => {
     const anterior = visiveis[(indiceManual ?? progresso.feitas) - 1];
-    return anterior && !AUTOMATICOS.has(anterior.campo) ? anterior : null;
-  }, [visiveis, indiceManual, progresso.feitas]);
+    return anterior && !automaticos.has(anterior.campo) ? anterior : null;
+  }, [visiveis, indiceManual, progresso.feitas, automaticos]);
 
   /** Anima a saída, aplica a mudança, anima a entrada. */
   const transicionar = useCallback((dir: Direcao, mutar: () => void) => {
@@ -389,18 +466,18 @@ function JornadaInner() {
 
   /** Gatilho de busca: o fluxo parou numa consulta, então puxa o dado. */
   useEffect(() => {
-    if (!campanha || carregando || decisao) return;
+    if (!pesquisa || carregando || decisao) return;
     if (!passo || !ehConsulta(passo)) return;
     if (consultando === passo.id) return;
 
     const alvo = passo;
     setConsultando(alvo.id);
-    setMensagemConsulta(campanha.carregamentos?.[alvo.hookId] ?? null);
+    setMensagemConsulta(pesquisa.carregamentos?.[alvo.hookId] ?? null);
     fetch("/api/executar-hook", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        campanhaId,
+        pesquisaId,
         hookId: alvo.hookId,
         argumentos: resolverArgumentos(alvo, respostas),
       }),
@@ -420,7 +497,7 @@ function JornadaInner() {
         setConsultando(null);
         setMensagemConsulta(null);
       });
-  }, [passo, campanha, carregando, decisao, campanhaId, respostas, consultando]);
+  }, [passo, pesquisa, carregando, decisao, pesquisaId, respostas, consultando]);
 
   /**
    * A entrada cobre da chegada até o primeiro hook terminar — é uma cena só, e
@@ -438,7 +515,7 @@ function JornadaInner() {
   }, [mensagemConsulta]);
 
   useEffect(() => {
-    if (!campanha || carregando || decisao || jaDecidiu.current) return;
+    if (!pesquisa || carregando || decisao || jaDecidiu.current) return;
     // Só decide quando a animação terminou — evita o card sumir no meio do movimento.
     if ((passo === null || ehFeedback(passo)) && fase === "estavel") {
       jaDecidiu.current = true;
@@ -446,7 +523,7 @@ function JornadaInner() {
       fetch("/api/decidir", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ campanhaId, cpf, respostas, externos }),
+        body: JSON.stringify({ pesquisaId, sessaoId, cpf: identificador, respostas, externos }),
       })
         .then((r) => r.json())
         .then((json) => {
@@ -454,7 +531,7 @@ function JornadaInner() {
           setEnviando(false);
         });
     }
-  }, [passo, campanha, carregando, decisao, campanhaId, cpf, respostas, fase, externos]);
+  }, [passo, pesquisa, carregando, decisao, pesquisaId, sessaoId, identificador, respostas, fase, externos]);
 
   /**
    * A entrada não é `return` antecipado: ela fica por cima, como camada fixa.
@@ -485,7 +562,7 @@ function JornadaInner() {
    * pela frente.
    */
   const emDecisao =
-    !!campanha && !carregando && entradaConcluida && (passo === null || !!telaFinal);
+    !!pesquisa && !carregando && entradaConcluida && (passo === null || !!telaFinal);
 
   useEffect(() => {
     if (!emDecisao) return;
@@ -496,7 +573,7 @@ function JornadaInner() {
 
   const saida = decisaoNoDom ? (
     <MarcaCarregando
-      // "da campanha" era jargão de gestor vazando para quem responde. O que
+      // Nomear a pesquisa aqui era jargão de gestor vazando para quem responde. O que
       // interessa dizer aqui é que quem decide é uma regra, não uma pessoa.
       mensagem="Aplicando as regras"
       // A tela final desenhada pelo autor não espera a API — ela já está pronta
@@ -506,14 +583,23 @@ function JornadaInner() {
     />
   ) : null;
 
-  if (!campanha) {
+  if (!pesquisa) {
+    /* Fora do ar não é "não encontrada": quem recebeu o link não errou o
+       endereço, e a diferença é a única coisa que essa pessoa precisa saber. */
+    const foraDoAr = motivo === "pesquisa_fora_do_ar";
     return (
       <>
         <ShellFluxo
           area={{ label: "Motorista", href: "/motorista" }}
           largura="estreita"
-          title="Campanha não encontrada"
+          title={foraDoAr ? "Esta pesquisa não está no ar" : "Pesquisa não encontrada"}
         >
+          {foraDoAr && (
+            <p className="text-lg text-ink-700 mb-6 max-w-xl">
+              Ela não está recebendo respostas agora. Se você recebeu o link de alguém da
+              Volkswagen, vale confirmar com quem enviou.
+            </p>
+          )}
           <Link href="/motorista" className="underline">Voltar</Link>
         </ShellFluxo>
         {entrada}
@@ -526,7 +612,7 @@ function JornadaInner() {
   if (telaFinal) {
     return (
       <>
-        <TelaFinal bloco={telaFinal} campanha={campanha} />
+        <TelaFinal bloco={telaFinal} pesquisa={pesquisa} contexto={contextoConhecido} />
         {entrada}
         {saida}
       </>
@@ -539,8 +625,8 @@ function JornadaInner() {
         <Resultado
           decisao={decisao}
           contexto={contextoConhecido}
-          campanha={campanha}
-          cpf={cpf}
+          pesquisa={pesquisa}
+          cpf={identificador}
         />
         {entrada}
         {saida}
@@ -558,7 +644,7 @@ function JornadaInner() {
         * Progresso em segmentos, um por passo — a figura de story: dá para
         * contar quantos faltam de relance, sem número escrito.
         *
-        * Sem nome de campanha e sem porcentagem embaixo: eram duas linhas de
+        * Sem nome de pesquisa e sem porcentagem embaixo: eram duas linhas de
         * texto para dizer o que a própria régua já diz.
         */}
       <div
@@ -599,7 +685,7 @@ function JornadaInner() {
       {/* Contexto já conhecido — o "perguntar menos" visível.
           Vem dos hooks, não de nenhuma base que o código conheça. */}
       {contextoConhecido.length > 0 && (
-        <CartaoPerfil dados={contextoConhecido} rotulos={campanha.rotulos ?? {}} />
+        <CartaoPerfil dados={contextoConhecido} rotulos={pesquisa.rotulos ?? {}} />
       )}
 
       <div className={classeAnimacao}>
@@ -614,7 +700,7 @@ function JornadaInner() {
           />
         )}
         {!pergunta && enviando && (
-          <p className="text-base text-ink-600">Aplicando regras da campanha...</p>
+          <p className="text-base text-ink-600">Aplicando regras da pesquisa...</p>
         )}
       </div>
 
@@ -839,12 +925,21 @@ function Chevron({ aberto }: { aberto: boolean }) {
 /**
  * Fim de caminho desenhado pelo autor da pesquisa.
  *
- * Abre igual ao resultado do motor: cartão da campanha primeiro, veredito
+ * Abre igual ao resultado do motor: cartão da pesquisa primeiro, veredito
  * depois. São as duas telas finais possíveis da mesma jornada, e chegar numa ou
  * na outra depende de um detalhe do fluxo que quem responde não conhece — não
  * faz sentido que pareçam telas de produtos diferentes.
  */
-function TelaFinal({ bloco, campanha }: { bloco: BlocoFeedback; campanha: CampanhaLite }) {
+function TelaFinal({
+  bloco,
+  pesquisa,
+  contexto,
+}: {
+  bloco: BlocoFeedback;
+  pesquisa: PesquisaLite;
+  /** Fatos legíveis trazidos pelos hooks até aqui — de onde saem os números. */
+  contexto: [string, unknown][];
+}) {
   /*
    * O filete colorido saiu. Ele carregava a cor do tipo de feedback e era a
    * única coisa a fazê-lo; o selo agora diz o mesmo, com forma além de cor —
@@ -857,14 +952,16 @@ function TelaFinal({ bloco, campanha }: { bloco: BlocoFeedback; campanha: Campan
   return (
     <ShellFluxo area={{ label: "Motorista", href: "/motorista" }} largura="estreita" rodapeColado>
       <div className="passo-entra-frente">
-        <CartaoCampanha nome={campanha.nome} />
-
-        {bloco.imagemUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={bloco.imagemUrl} alt="" className="max-h-40 mt-8 object-contain" />
-        )}
-
-        <Veredito tom={tom} titulo={bloco.titulo} texto={bloco.mensagem} />
+        <TelaDeDesfecho
+          nomeDaPesquisa={pesquisa.nome}
+          tom={tom}
+          titulo={bloco.titulo}
+          texto={bloco.mensagem}
+          imagemUrl={bloco.imagemUrl}
+          numeros={bloco.mostrarNumeros ? numerosDe(contexto) : []}
+          rotulos={pesquisa.rotulos ?? {}}
+          proximoPasso={bloco.proximoPasso}
+        />
 
         <BotaoFinalizar />
       </div>
@@ -872,95 +969,61 @@ function TelaFinal({ bloco, campanha }: { bloco: BlocoFeedback; campanha: Campan
   );
 }
 
+/** Os fatos numéricos do contexto, que é o que os cartões de número mostram. */
+function numerosDe(contexto: [string, unknown][]) {
+  return contexto.filter(([, v]) => typeof v === "number").slice(0, 3);
+}
+
 function Resultado({
   decisao,
   contexto,
-  campanha,
+  pesquisa,
   cpf,
 }: {
   decisao: DecisaoResultado;
   contexto: [string, unknown][];
-  campanha: CampanhaLite;
+  pesquisa: PesquisaLite;
   cpf: string;
 }) {
-  const nome = primeiroNome(contexto);
-  const saudar = (frase: string) => (nome ? `${nome}, ${frase}` : emMaiuscula(frase));
-
   /* Números trazidos pelos hooks — quaisquer que sejam. O motor não sabe que
      são meses e corridas, e não precisa saber para exibi-los. */
-  const numeros = contexto.filter(([, v]) => typeof v === "number").slice(0, 3);
+  const numeros = numerosDe(contexto);
 
   /*
-   * O veredito é o único texto colorido da tela, e isso é exceção declarada à
-   * regra de título sempre navy: ele deixou de ser o h1 e virou a legenda do
-   * cartão da campanha, então a cor faz o trabalho que a hierarquia de tamanho
-   * não faz mais. Fora daqui a regra continua valendo.
+   * O texto do desfecho sai do dado da pesquisa.
    *
-   * As reticências nos caminhos que não deram certo não são estilo: "ainda não
-   * é dessa vez." fecha o assunto, "ainda não é dessa vez..." deixa a porta
-   * aberta, que é literalmente o que a frase seguinte promete.
+   * Era um objeto aqui dentro, com uma entrada por tipo de resultado — cinco
+   * telas escritas em código, todas falando de concessionária e elegibilidade.
+   * Uma pesquisa de satisfação chegava ao fim e lia "você está elegível!".
    *
-   * Pendente e revalidar não levam cor: não deram errado, estão esperando. Só
-   * ganham o selo de relógio.
+   * O veredito é o único texto colorido da tela, e isso segue sendo exceção
+   * declarada à regra de título sempre navy: ele deixou de ser o h1 e virou a
+   * legenda do cartão da pesquisa, então a cor faz o trabalho que a hierarquia
+   * de tamanho não faz mais.
    */
-  const cfg = {
-    elegivel: {
-      tom: "go" as const,
-      titulo: saudar("você está elegível!"),
-      texto:
-        "Suas condições especiais estão liberadas. Um vendedor da concessionária escolhida vai te procurar.",
-    },
-    nao_elegivel: {
-      tom: "stop" as const,
-      titulo: saudar("ainda não é dessa vez..."),
-      texto: "Você pode voltar assim que atingir os critérios. Nada se perde.",
-    },
-    pendente_validacao: {
-      tom: "espera" as const,
-      // "seu caso" é jargão de central de atendimento, e transforma quem
-      // responde em processo. Aqui somos nós que fazemos alguma coisa.
-      titulo: saudar("vamos analisar seu pedido."),
-      texto: "Nossa central analisa manualmente e retorna pelo canal que você informou.",
-    },
-    revalidar: {
-      tom: "espera" as const,
-      titulo: saudar("precisamos confirmar seus dados."),
-      texto: "Encontramos uma divergência. A central vai entrar em contato para confirmar.",
-    },
-    erro: {
-      tom: "stop" as const,
-      titulo: saudar("não conseguimos decidir agora..."),
-      texto: "Houve um problema na consulta. Sua solicitação foi encaminhada para análise.",
-    },
-  }[decisao.tipo];
+  const desfecho = acharDesfecho(pesquisa.desfechos, decisao.tipo);
+  const trocas = { nome: primeiroNome(contexto), identificador: mascararCpf(cpf) };
 
   return (
     <ShellFluxo area={{ label: "Motorista", href: "/motorista" }} largura="estreita" rodapeColado>
       <div className="passo-entra-frente">
-        {/* Sem filete de estado acima do título: o selo e a cor já dizem o
-            estado, e o filete seria a mesma informação uma terceira vez. */}
-        <CartaoCampanha nome={campanha.nome} />
-
-        <Veredito tom={cfg.tom} titulo={cfg.titulo} texto={cfg.texto} />
-
-        {/* Sem o rótulo "Motivo" em cima: a frase já se apresenta como motivo, e
-            a palavra só ocupava uma linha para anunciar a linha seguinte. */}
-        <p className="text-base text-ink-800 mt-8">{decisao.motivo}</p>
-
-        <CartoesNumericos numeros={numeros} rotulos={campanha.rotulos ?? {}} />
-
-        {decisao.tipo === "elegivel" && (
-          <div className="mt-8 rounded-md border border-signal-go/40 bg-signal-go/[0.07] px-5 py-5 flex gap-3.5">
-            <IconeInfo />
-            <div>
-              <div className="text-sm font-semibold text-signal-go">Próximo passo</div>
-              <p className="text-base text-ink-800 mt-1.5">
-                Leve seu CPF <span className="mono">{mascararCpf(cpf)}</span> à concessionária. O
-                vendedor consulta e o pedido já sai liberado.
-              </p>
-            </div>
-          </div>
-        )}
+        {/* Mesmo modelo do bloco de tela final: o desenho é um só, e o que
+            muda é de onde vem o texto — aqui, do desfecho da pesquisa. */}
+        <TelaDeDesfecho
+          nomeDaPesquisa={pesquisa.nome}
+          tom={desfecho.tom}
+          titulo={preencherTexto(desfecho.titulo, trocas)}
+          texto={desfecho.texto ? preencherTexto(desfecho.texto, trocas) : undefined}
+          motivo={decisao.motivo}
+          numeros={numeros}
+          rotulos={pesquisa.rotulos ?? {}}
+          proximoPasso={
+            desfecho.proximoPasso && {
+              titulo: desfecho.proximoPasso.titulo,
+              texto: preencherTexto(desfecho.proximoPasso.texto, trocas),
+            }
+          }
+        />
 
         {/* Uma ação só: não há segunda decisão a tomar aqui, e "ver como o
             vendedor enxerga" era porta de bastidor aberta para quem responde.

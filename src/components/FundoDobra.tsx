@@ -15,7 +15,7 @@ import GradientBlinds from "./GradientBlinds";
  * Só monta depois do primeiro quadro no cliente: renderizar canvas WebGL no
  * servidor não existe, e montar antes só produziria um retângulo vazio no HTML.
  */
-export function FundoDobra() {
+export function FundoDobra({ holofoteFixo = false }: { holofoteFixo?: boolean }) {
   const [ligado, setLigado] = useState(false);
   const [pausado, setPausado] = useState(false);
   const [visivel, setVisivel] = useState(false);
@@ -73,6 +73,10 @@ export function FundoDobra() {
         /* O holofote segue o cursor com um atraso curto — é o que dá a
            sensação de peso. Muito mais que isto e ele parece preso; menos, e
            gruda no ponteiro feito lanterna. */
+        /* Na miniatura o holofote fica parado à esquerda, na altura do título —
+           é onde ele estaria com alguém lendo a tela. Sem isso a peça só acende
+           quando o cursor passa por cima dela. */
+        spotlightFixed={holofoteFixo ? [0.34, 0.55] : undefined}
         mouseDampening={0.18}
         spotlightRadius={0.5}
         spotlightSoftness={1}

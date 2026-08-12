@@ -8,3 +8,7 @@ out
 # artefatos de build
 *.tsbuildinfo
 next-env.d.ts
+
+# ferramentas locais, nao do produto
+.hallmark
+.claude/skills

@@ -1,45 +1,70 @@
-import { FundoDobra } from "@/components/FundoDobra";
+import { capaEhClara, FundoDaCapa } from "@/components/FundoDaCapa";
 import { MarcaCabecalho } from "@/components/MarcaCabecalho";
-import { PadraoPontos } from "@/components/PadraoPontos";
 import { ShellFluxo } from "@/components/ShellFluxo";
-import { listarCampanhas } from "@/lib/store";
+import { podePropor } from "@/lib/identidade";
+import { usuarioAtual } from "@/lib/identidade-server";
+import { listarPesquisas } from "@/lib/store";
+import { APRESENTACAO_PADRAO, PesquisaStatus } from "@/lib/types";
 import { notFound } from "next/navigation";
-import { IniciarJornadaForm } from "./iniciar-form";
+import { ConviteJornada, IniciarJornadaForm } from "./iniciar-form";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Home do respondente, com escopo de UMA campanha.
+ * Home do respondente, com escopo de UMA pesquisa.
  *
- * A campanha chega pelo link que o gestor compartilha (`?campanha=<id>`, o mesmo
- * que a tela da campanha exibe como "Link de teste") e dá o título da página.
- * Antes ela era um seletor dentro do formulário, o que pedia a quem responde uma
- * decisão que é do gestor.
+ * A pesquisa chega pelo link que o gestor compartilha (`?pesquisa=<id>`) e dá o
+ * título da página. Antes era um seletor dentro do formulário, o que pedia a
+ * quem responde uma decisão que é do gestor.
+ *
+ * O título e o texto saem do dado — a chamada e a descrição da pesquisa —
+ * porque são copy do caso de uso. Uma pesquisa de satisfação usa a mesma tela
+ * sem precisar de um `if` novo aqui dentro.
  *
  * Forma: a dobra é uma faixa só, toda em gradiente, ocupando a tela inteira. Não
  * há barra de cabeçalho — a marca mora dentro da própria dobra, porque uma faixa
  * branca acima roubaria altura para repetir o que já está lá dentro.
  */
 
-/** "T-Cross, Nivus ou Polo Track" — a lista fecha com "ou", que é como se fala. */
-function listar(modelos: string[]) {
-  if (modelos.length <= 1) return modelos[0] ?? "";
-  return `${modelos.slice(0, -1).join(", ")} ou ${modelos[modelos.length - 1]}`;
-}
-
 export default function MotoristaHome({
   searchParams,
 }: {
-  searchParams: { campanha?: string };
+  searchParams: { pesquisa?: string; previa?: string };
 }) {
-  const abertas = listarCampanhas().filter(
-    (c) => c.status === "ativa" || c.status === "rascunho",
-  );
-  const campanha = searchParams.campanha
-    ? abertas.find((c) => c.id === searchParams.campanha)
-    : abertas[0];
+  /*
+   * A situação é a porta, e não um rótulo.
+   *
+   * Antes esta tela aceitava `ativa` **e** `rascunho`: quem tivesse o link de um
+   * rascunho respondia normalmente, e "No ar" não trancava nada. Agora só a
+   * pesquisa publicada responde — as outras dizem o que aconteceu, em vez do
+   * 404 seco que era a resposta para pausada e encerrada.
+   */
+  const todas = listarPesquisas();
+  const pesquisa = searchParams.pesquisa
+    ? todas.find((p) => p.id === searchParams.pesquisa)
+    : todas.find((p) => p.status === "ativa");
 
-  if (!campanha) notFound();
+  if (!pesquisa) notFound();
+
+  /*
+   * A prévia é pedida na URL, não deduzida de quem está olhando.
+   *
+   * A tentação era liberar para quem tem papel de propor — só que aqui o
+   * usuário sem cookie **é** a gestora padrão, e a trava não trancaria nada. Com
+   * `?previa=1`, o link que se compartilha continua sendo o link de verdade, e
+   * ver antes de publicar é uma escolha deliberada de quem monta.
+   */
+  const previa = searchParams.previa === "1" && podePropor(usuarioAtual());
+
+  if (pesquisa.status !== "ativa" && !previa) {
+    return <ForaDoAr status={pesquisa.status} />;
+  }
+
+  /* Pesquisa criada antes de a capa existir não tem o campo — e continua
+     abrindo, no formato que ela sempre teve. */
+  const capa = pesquisa.apresentacao ?? APRESENTACAO_PADRAO;
+  /* Fundo claro pede texto escuro — e a marca também vira. */
+  const claro = capaEhClara(capa.fundo);
 
   return (
     <ShellFluxo
@@ -58,23 +83,25 @@ export default function MotoristaHome({
         // O `1px` do cálculo é o filete do rodapé: sem descontá-lo sobra
         // exatamente essa altura de rolagem, e página que rola 1px é página que
         // rola.
-        <section className="bg-profundo text-ink-0 min-h-[calc(100svh-5rem-1px)] flex flex-col relative">
-          {/*
-           * Trama de pontos, sutil. Sem modo de mesclagem: `soft-light` com
-           * branco sobre navy escuro levanta tão pouco que a trama sumia. A
-           * opacidade direta é previsível e chega no mesmo lugar.
-           *
-           * A máscara elíptica apaga a trama subindo — ela vive no pé da dobra,
-           * longe do título e do cartão, que é o que a mantém decoração.
-           */}
-          <FundoDobra />
-          <PadraoPontos
-            className="fill-ink-0/[0.14] [mask-image:radial-gradient(110%_90%_at_50%_115%,black_25%,transparent_70%)]"
-          />
+        <section
+          className={`bg-profundo min-h-[calc(100svh-5rem-1px)] flex flex-col relative ${
+            claro ? "text-ink-900" : "text-ink-0"
+          }`}
+        >
+          {previa && (
+            <div className="relative z-10 bg-signal-warn/95 text-ink-900 text-center text-sm font-semibold py-2 px-4">
+              Prévia · esta pesquisa não está no ar. Quem não é do time vê um aviso no lugar dela.
+            </div>
+          )}
+
+          {/* A camada decorativa vem do catálogo, escolhida no fluxo. O azul de
+              baixo é da seção e não muda: é ele que segura a leitura quando o
+              fundo escolhido é WebGL e o WebGL não sobe. */}
+          <FundoDaCapa fundo={capa.fundo} />
           {/* `relative` nos irmãos: um `absolute` pinta acima de filho não
               posicionado, então sem isto a trama passaria por cima do texto. */}
           <div className="entra relative max-w-7xl mx-auto px-6 w-full pt-7">
-            <MarcaCabecalho href="/motorista" rotulo="Motorista" tom="claro" />
+            <MarcaCabecalho href="/motorista" rotulo="Motorista" tom={claro ? "escuro" : "claro"} />
           </div>
 
           <div className="relative flex-1 flex items-center">
@@ -85,26 +112,54 @@ export default function MotoristaHome({
             <div className="max-w-7xl mx-auto px-6 w-full grid lg:grid-cols-12 gap-x-12 gap-y-8 lg:gap-y-12 items-center py-6 lg:py-10">
               {/* `data-sai`: os dois blocos que a saída anima antes de navegar. */}
               <div data-sai className="lg:col-span-7">
-                <h1 className="entra display text-5xl text-ink-0" style={{ animationDelay: "80ms" }}>
-                  {listar(campanha.modelos)} na condição de motorista
+                <h1
+                  className={`entra display text-5xl ${claro ? "text-ink-900" : "text-ink-0"}`}
+                  style={{ animationDelay: "80ms" }}
+                >
+                  {pesquisa.chamada ?? pesquisa.nome}
                 </h1>
-                <p className="entra text-lg mt-6 lg:mt-8 max-w-2xl text-azul-100" style={{ animationDelay: "170ms" }}>
-                  Você dirige por aplicativo e a Volkswagen já tem os dados que precisa conferir.
-                  Digite seu CPF e veja a resposta nesta mesma tela.
+                {/* `azul-100` sobre o navy, `ink-700` sobre o branco: os dois são
+                    o degrau de apoio da sua base, e nenhum fica abaixo do piso
+                    de contraste. */}
+                <p
+                  className={`entra text-lg mt-6 lg:mt-8 max-w-2xl ${
+                    claro ? "text-ink-700" : "text-azul-100"
+                  }`}
+                  style={{ animationDelay: "170ms" }}
+                >
+                  {pesquisa.descricao}
                 </p>
               </div>
 
               <div data-sai className="lg:col-span-5">
                 {/*
-                 * Sem trilha de passos aqui. O CPF é a porta de entrada, não o
-                 * passo 1 de N: o número de perguntas depende do que os hooks
-                 * trouxerem, e a jornada conta 3 ou 5 conforme o caminho. Um
-                 * "passo 1 de 4" no cartão prometia um total que a tela
-                 * seguinte contradiz.
+                 * Sem trilha de passos aqui. A identificação é a porta de
+                 * entrada, não o passo 1 de N: o número de perguntas depende do
+                 * que os hooks trouxerem, e a jornada conta 3 ou 5 conforme o
+                 * caminho. Um "passo 1 de 4" no cartão prometia um total que a
+                 * tela seguinte contradiz.
                  */}
                 <div className="entra bg-ink-0 border hairline rounded-md p-6 lg:p-8 shadow-lift" style={{ animationDelay: "260ms" }}>
-                  <h2 className="text-xl font-semibold tracking-tight mb-6">Comece pelo CPF</h2>
-                  <IniciarJornadaForm campanhaId={campanha.id} />
+                  {/* Sem identificador não há onde guardar a resposta — o
+                      cartão vira convite em vez de colher um dado que some. */}
+                  {capa.entrada === "convite" ||
+                  !capa.pergunta?.campo.trim() ||
+                  !capa.pergunta?.rotulo.trim() ? (
+                    <ConviteJornada
+                      pesquisaId={pesquisa.id}
+                      rotulo={capa.rotuloDoConvite}
+                      previa={previa}
+                    />
+                  ) : (
+                    /* O título do cartão é o enunciado da pergunta. Enquanto era
+                       "Comece pelo CPF" fixo, trocar a pergunta para e-mail
+                       deixava um título mentindo em cima do campo certo. */
+                    <IniciarJornadaForm
+                      pesquisaId={pesquisa.id}
+                      pergunta={capa.pergunta}
+                      previa={previa}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -112,5 +167,33 @@ export default function MotoristaHome({
         </section>
       }
     />
+  );
+}
+
+/**
+ * A tela de quem chega por um link que não está mais respondendo.
+ *
+ * Ela existe porque o 404 mentia: quem recebeu o link de uma pesquisa que
+ * encerrou não errou o endereço, e a diferença entre "não existe" e "acabou"
+ * é a única coisa que essa pessoa precisa saber.
+ *
+ * Sem o nome da pesquisa: o link pode ter vazado, e o nome interno de um
+ * rascunho não é assunto de quem está do lado de fora.
+ */
+function ForaDoAr({ status }: { status: PesquisaStatus }) {
+  const texto =
+    status === "encerrada"
+      ? "Esta pesquisa foi encerrada e não recebe mais respostas. Se você respondeu antes do fim, sua resposta continua valendo."
+      : "Esta pesquisa não está recebendo respostas agora. Se você recebeu o link de alguém da Volkswagen, vale confirmar com quem enviou.";
+
+  return (
+    <ShellFluxo area={{ label: "Motorista", href: "/motorista" }} largura="estreita" rodapeColado>
+      <div className="py-16">
+        <h1 className="display text-3xl">
+          {status === "encerrada" ? "Esta pesquisa terminou" : "Esta pesquisa está fora do ar"}
+        </h1>
+        <p className="text-lg text-ink-700 mt-5 max-w-xl">{texto}</p>
+      </div>
+    </ShellFluxo>
   );
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { obterCampanha, salvarCampanha } from "@/lib/store";
+import { salvarHooks } from "@/lib/store";
 import { Hook } from "@/lib/types";
 import { podePropor } from "@/lib/identidade";
 import { usuarioAtual } from "@/lib/identidade-server";
@@ -10,7 +10,7 @@ const IDENTIFICADOR = /^[a-z][a-zA-Z0-9]*$/;
 const PREFIXOS_RESERVADOS = ["resposta"];
 
 export async function PUT(req: Request) {
-  const { campanhaId, hooks } = (await req.json()) as { campanhaId: string; hooks: Hook[] };
+  const { hooks } = (await req.json()) as { hooks: Hook[] };
 
   const autor = usuarioAtual();
   if (!podePropor(autor)) {
@@ -20,10 +20,6 @@ export async function PUT(req: Request) {
     );
   }
 
-  const campanha = obterCampanha(campanhaId);
-  if (!campanha) {
-    return NextResponse.json({ erro: "campanha_nao_encontrada" }, { status: 404 });
-  }
   if (!Array.isArray(hooks)) {
     return NextResponse.json({ erro: "payload_invalido" }, { status: 400 });
   }
@@ -84,7 +80,6 @@ export async function PUT(req: Request) {
     );
   }
 
-  campanha.hooks = hooks;
-  salvarCampanha(campanha);
+  salvarHooks(hooks);
   return NextResponse.json({ ok: true, total: hooks.length });
 }

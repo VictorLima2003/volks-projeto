@@ -7,12 +7,12 @@ import { useState } from "react";
 
 export function CriarPedidoForm({
   cpf,
-  campanhas,
+  pesquisas,
   vendedor,
   concessionaria,
 }: {
   cpf: string;
-  campanhas: { id: string; nome: string; modelos: string[]; concessionaria: string }[];
+  pesquisas: { id: string; nome: string; modelos: string[] }[];
   /** Quem está logado. Só para mostrar — quem grava a autoria é o servidor. */
   vendedor: string;
   /** Loja de quem está logado, pelo mesmo motivo. */
@@ -21,9 +21,9 @@ export function CriarPedidoForm({
   const router = useRouter();
   const { avisar } = useAviso();
   const [loading, setLoading] = useState(false);
-  const [campanhaId, setCampanhaId] = useState(campanhas[0]?.id ?? "");
+  const [pesquisaId, setPesquisaId] = useState(pesquisas[0]?.id ?? "");
 
-  const campanha = campanhas.find((c) => c.id === campanhaId);
+  const pesquisa = pesquisas.find((p) => p.id === pesquisaId);
 
   return (
     <form
@@ -36,7 +36,7 @@ export function CriarPedidoForm({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             cpf,
-            campanhaId,
+            pesquisaId,
             modelo: fd.get("modelo"),
           }),
         });
@@ -59,17 +59,17 @@ export function CriarPedidoForm({
       className="grid gap-4"
     >
       <div>
-        <Label htmlFor="camp">Campanha</Label>
-        <Select id="camp" value={campanhaId} onChange={(e) => setCampanhaId(e.target.value)}>
-          {campanhas.map((c) => (
+        <Label htmlFor="camp">Pesquisa de origem</Label>
+        <Select id="camp" value={pesquisaId} onChange={(e) => setPesquisaId(e.target.value)}>
+          {pesquisas.map((c) => (
             <option key={c.id} value={c.id}>{c.nome}</option>
           ))}
         </Select>
       </div>
       <div>
         <Label htmlFor="modelo">Modelo</Label>
-        <Select id="modelo" name="modelo" key={campanha?.id}>
-          {(campanha?.modelos ?? []).map((m) => (
+        <Select id="modelo" name="modelo" key={pesquisa?.id}>
+          {(pesquisa?.modelos ?? []).map((m) => (
             <option key={m} value={m}>{m}</option>
           ))}
         </Select>

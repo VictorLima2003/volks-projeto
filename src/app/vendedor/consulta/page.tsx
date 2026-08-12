@@ -1,5 +1,5 @@
 import {
-  CartaoCampanha,
+  CartaoPesquisa,
   CartoesNumericos,
   Veredito,
   type Tom,
@@ -8,13 +8,25 @@ import { ShellFluxo } from "@/components/ShellFluxo";
 import { usuarioAtual } from "@/lib/identidade-server";
 import { Badge, Card, LinkButton } from "@/components/ui";
 import { ROTULO_PEDIDO_STATUS } from "@/lib/catalogo";
-import { criteriosLegiveis, mapaDeRotulos, rotularFato, ruleSetAtivo } from "@/lib/engine";
-import { listarCampanhas, listarSessoes, pedidosPorCpf } from "@/lib/store";
+import { criteriosLegiveis, mapaDeRotulos, rotularFato, todasAsPerguntas } from "@/lib/engine";
+import { Bloco , desfechosDa } from "@/lib/types";
+import { listarHooks, listarPesquisas, listarSessoes, pedidosPorCpf, versaoAtivaDaPesquisa } from "@/lib/store";
 import Link from "next/link";
 import { CriarPedidoForm } from "./criar-pedido-form";
 import { EsperaDaConsulta } from "./espera";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Os modelos que a pesquisa oferece, lidos da pergunta que os oferece.
+ *
+ * "modelo" é vocabulário do balcão, e é aqui que ele pode aparecer — o motor
+ * segue sem conhecer o campo por nome. Lista vazia quando a pesquisa não
+ * pergunta modelo nenhum: aí o vendedor digita.
+ */
+function modelosOferecidos(blocos: Bloco[]): string[] {
+  return todasAsPerguntas(blocos).find((q) => q.campo === "modelo")?.opcoes ?? [];
+}
 
 /** `true`/`false` viram sim/não: no balcão ninguém lê booleano. */
 function legivel(v: unknown) {
@@ -38,40 +50,39 @@ export default function Consulta({ searchParams }: { searchParams: { cpf?: strin
     .find((n) => typeof n === "string" && n.trim());
   const eu = usuarioAtual();
   const pedidos = pedidosPorCpf(cpf);
-  const campanhas = listarCampanhas();
+  const pesquisas = listarPesquisas();
   const hooksPorPrefixo = new Map(
-    campanhas.flatMap((c) => c.hooks.map((h) => [h.prefixo, h.nome] as const)),
+    listarHooks().map((h) => [h.prefixo, h.nome] as const),
   );
 
-  const liberado = ultima?.resultado?.tipo === "elegivel";
-  const bloqueado = ultima?.resultado?.tipo === "nao_elegivel";
+  const liberado = ultima?.resultado?.efeito === "libera";
+  const bloqueado = ultima?.resultado?.efeito === "recusa";
   const analise = ultima?.resultado?.tipo === "pendente_validacao" || ultima?.resultado?.tipo === "revalidar";
 
   // Mesmo selo do motorista, vocabulário do balcão: quem está aqui decide se
   // monta o pedido, não se "está elegível".
   const tom: Tom = liberado ? "go" : bloqueado ? "stop" : analise ? "espera" : "neutro";
   const veredito = liberado
-    ? { titulo: "Pedido liberado", texto: "Pode montar agora, na campanha e no modelo que o motorista escolher." }
+    ? { titulo: "Pedido liberado", texto: "Pode montar agora, no modelo que o motorista escolher." }
     : bloqueado
-      ? { titulo: "Pedido bloqueado", texto: "Não dá para registrar nesta campanha. O motivo abaixo é o que explicar ao motorista." }
+      ? { titulo: "Pedido bloqueado", texto: "Não dá para registrar este pedido. O motivo abaixo é o que explicar ao motorista." }
       : analise
         ? { titulo: "Aguardando análise", texto: "A central está conferindo o cadastro. Nada a fazer até ela responder." }
         : {
             titulo: "Sem jornada concluída",
             texto:
-              "Este CPF ainda não respondeu à pesquisa. Envie o link da campanha antes de montar o pedido.",
+              "Este CPF ainda não respondeu à pesquisa. Envie o link antes de montar o pedido.",
           };
 
   /*
-   * Critérios da campanha, tirados da regra que concede elegibilidade no
-   * RuleSet ativo. Não há texto escrito à mão: mudou a régua, muda a frase.
+   * Critérios da pesquisa, tirados da regra que concede elegibilidade no
+   * versão ativa. Não há texto escrito à mão: mudou a regra, muda a frase.
    */
-  const campanhaDaSessao = campanhas.find((c) => c.id === ultima?.campanhaId) ?? campanhas[0];
+  const pesquisaDaSessao = pesquisas.find((p) => p.id === ultima?.pesquisaId) ?? pesquisas[0];
   // Rótulos que os hooks declararam; o que não estiver lá cai na regra mecânica.
-  const rotulos = mapaDeRotulos(campanhaDaSessao?.hooks ?? []);
-  const criterios = campanhaDaSessao
-    ? criteriosLegiveis(ruleSetAtivo(campanhaDaSessao), rotulos)
-    : [];
+  const rotulos = mapaDeRotulos(listarHooks());
+  const versaoQueDecide = pesquisaDaSessao ? versaoAtivaDaPesquisa(pesquisaDaSessao) : undefined;
+  const criterios = versaoQueDecide ? criteriosLegiveis(versaoQueDecide, rotulos, desfechosDa(pesquisaDaSessao!)) : [];
 
   // Os mesmos números que o motorista viu no fim da jornada.
   const numeros = fatosColetados
@@ -120,7 +131,7 @@ export default function Consulta({ searchParams }: { searchParams: { cpf?: strin
        * condição dele, o vendedor lê sobre o pedido que pode ou não montar.
        */}
       <div className="mb-10">
-        <CartaoCampanha
+        <CartaoPesquisa
           rotulo="Motorista"
           nome={String(nomeDoRespondente ?? cpf)}
           /* Só repete o CPF embaixo quando o nome está no lugar do nome —
@@ -130,7 +141,7 @@ export default function Consulta({ searchParams }: { searchParams: { cpf?: strin
         <Veredito tom={tom} titulo={veredito.titulo} texto={liberado ? undefined : veredito.texto} />
 
         {/*
-         * No caminho liberado, uma frase só: os critérios da campanha, vindos da
+         * No caminho liberado, uma frase só: os critérios da pesquisa, vindos da
          * regra. Antes eram duas — uma dizendo ao vendedor o que ele podia
          * fazer, outra sendo o `motivo` do motor, escrito na segunda pessoa
          * para quem responde ("Você atende aos critérios"). No balcão, essa
@@ -139,7 +150,7 @@ export default function Consulta({ searchParams }: { searchParams: { cpf?: strin
         {liberado ? (
           criterios.length > 0 && (
             <p className="text-base text-ink-800 mt-8">
-              O motorista atende aos critérios necessários para a campanha:{" "}
+              O motorista atende aos critérios necessários:{" "}
               <strong className="font-semibold">{criterios.join(" · ")}</strong>.
             </p>
           )
@@ -160,8 +171,21 @@ export default function Consulta({ searchParams }: { searchParams: { cpf?: strin
               <CriarPedidoForm
                 cpf={cpf}
                 vendedor={eu.nome}
-                concessionaria={eu.concessionaria ?? campanhaDaSessao?.concessionaria ?? ""}
-                campanhas={campanhas.map((c) => ({ id: c.id, nome: c.nome, modelos: c.modelos, concessionaria: c.concessionaria }))}
+                concessionaria={eu.concessionaria ?? ""}
+                /*
+                 * Os modelos saem das opções da própria pergunta de modelo.
+                 *
+                 * Já foram um campo de texto paralelo, escrito à mão na
+                 * configuração da pesquisa — duas listas para manter iguais, e
+                 * um erro de grafia na chave esvaziava este seletor sem avisar
+                 * ninguém. O que a pessoa escolhe na jornada é o que o balcão
+                 * oferece: um dado, uma origem.
+                 */
+                pesquisas={pesquisas.map((p) => ({
+                  id: p.id,
+                  nome: p.nome,
+                  modelos: modelosOferecidos(p.blocos),
+                }))}
               />
             </Card>
           )}
@@ -171,17 +195,19 @@ export default function Consulta({ searchParams }: { searchParams: { cpf?: strin
             <Card>
               <h3 className="text-lg font-semibold tracking-tight mb-3">Enviar pesquisa ao motorista</h3>
               <div className="space-y-2">
-                {campanhas.map((c) => (
+                {pesquisas.map((p) => (
                   <Link
-                    key={c.id}
-                    href={`/motorista/jornada?campanha=${c.id}&cpf=${encodeURIComponent(cpf)}`}
+                    key={p.id}
+                    href={`/motorista/jornada?pesquisa=${p.id}&cpf=${encodeURIComponent(cpf)}`}
                     /* Papel branco com realce cinza no hover, igual às linhas de
                        tabela. O `bg-ink-100` de antes era a mesma faixa bege
                        que saiu do cabeçalho das tabelas. */
                     className="flex items-center justify-between border hairline-strong bg-ink-0 hover:bg-ink-200/40 px-4 py-3 transition"
                   >
-                    <span>{c.nome}</span>
-                    <span className="text-xs text-ink-600">{c.modelos.join(" · ")} →</span>
+                    <span>{p.nome}</span>
+                    <span className="text-xs text-ink-600">
+                      {modelosOferecidos(p.blocos).join(" · ") || "abrir"} →
+                    </span>
                   </Link>
                 ))}
               </div>
@@ -192,7 +218,7 @@ export default function Consulta({ searchParams }: { searchParams: { cpf?: strin
             <Card>
               <h3 className="text-lg font-semibold tracking-tight mb-3">O que fazer agora</h3>
               <ul className="text-sm text-ink-700 space-y-2">
-                <li>• Não é possível registrar pedido nesta campanha.</li>
+                <li>• Não é possível registrar este pedido.</li>
                 <li>• Explique o critério ao motorista com os números reais abaixo.</li>
                 <li>• Se houver erro nos dados, encaminhe à Central para revalidação.</li>
               </ul>

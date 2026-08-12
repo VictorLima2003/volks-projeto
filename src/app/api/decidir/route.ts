@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  abrirSessao,
   atualizarResposta,
   finalizarSessao,
   obterOuIniciarSessao,
@@ -9,12 +10,16 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const { campanhaId, cpf, respostas, externos } = await req.json();
-  if (!campanhaId || !cpf) {
+  const { pesquisaId, cpf, sessaoId, respostas, externos } = await req.json();
+  if (!pesquisaId || !cpf) {
     return NextResponse.json({ erro: "parametros_invalidos" }, { status: 400 });
   }
 
-  const sessao = obterOuIniciarSessao(campanhaId, cpf);
+  /* A jornada manda o id da sessão que ela abriu ao começar; sem ele — uma
+     chamada antiga, ou de fora — cai na sessão em andamento daquele CPF. */
+  const sessao = sessaoId
+    ? abrirSessao(pesquisaId, sessaoId, cpf)
+    : obterOuIniciarSessao(pesquisaId, cpf);
   for (const [campo, valor] of Object.entries(respostas ?? {})) {
     atualizarResposta(sessao.id, campo, valor);
   }

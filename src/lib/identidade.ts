@@ -3,7 +3,7 @@
  * A leitura do cookie no servidor mora em `identidade-server.ts`, que importa
  * `next/headers` e por isso não pode ser puxada por um Client Component.
  */
-export type Papel = "propoe" | "aprova" | "vende";
+export type Papel = "propoe" | "revisa" | "vende";
 
 export interface Usuario {
   id: string;
@@ -21,8 +21,8 @@ export interface Usuario {
 export const USUARIOS: Usuario[] = [
   { id: "ana.produto@volkswagen",       nome: "Ana Prado",   area: "Produto",    papeis: ["propoe"] },
   { id: "caio.marketing@volkswagen",    nome: "Caio Nunes",  area: "Marketing",  papeis: ["propoe"] },
-  { id: "marina.compliance@volkswagen", nome: "Marina Reis", area: "Compliance", papeis: ["aprova"] },
-  { id: "rui.diretoria@volkswagen",     nome: "Rui Amaral",  area: "Diretoria",  papeis: ["propoe", "aprova"] },
+  { id: "marina.compliance@volkswagen", nome: "Marina Reis", area: "Compliance", papeis: ["revisa"] },
+  { id: "rui.diretoria@volkswagen",     nome: "Rui Amaral",  area: "Diretoria",  papeis: ["propoe", "revisa"] },
   // Quem atende no balcão. Entra com o próprio login, e é por isso que a
   // carteira consegue ser a carteira de alguém em vez da lista inteira.
   { id: "julia.barrafunda@volkswagen",  nome: "Júlia Moraes", area: "Vendas",    papeis: ["vende"], concessionaria: "VW Barra Funda (SP)" },
@@ -36,8 +36,8 @@ export function usuarioPorId(id: string | undefined): Usuario {
   return USUARIOS.find((u) => u.id === id) ?? USUARIO_PADRAO;
 }
 
-export function podeAprovar(u: Usuario): boolean {
-  return u.papeis.includes("aprova");
+export function podeRevisar(u: Usuario): boolean {
+  return u.papeis.includes("revisa");
 }
 
 export function podePropor(u: Usuario): boolean {
@@ -47,7 +47,7 @@ export function podePropor(u: Usuario): boolean {
 /** Rótulo curto do papel, para o seletor e as telas não repetirem a mesma conta. */
 export function papelLegivel(u: Usuario): string {
   if (u.concessionaria) return u.concessionaria;
-  if (podeAprovar(u)) return "pode aprovar";
+  if (podeRevisar(u)) return "revisa versões";
   return "propõe apenas";
 }
 

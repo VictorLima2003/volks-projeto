@@ -2,20 +2,20 @@ import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, Stat, Table, TD, TH, THead, TR } from "@/components/ui";
 import { ROTULO_PEDIDO_STATUS } from "@/lib/catalogo";
 import { usuarioPorId } from "@/lib/identidade";
-import { listarCampanhas, listarPedidos, listarSessoes } from "@/lib/store";
+import { listarPedidos, listarPesquisas, listarSessoes } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 
 export default function Dashboard() {
   const sessoes = listarSessoes();
   const pedidos = listarPedidos();
-  const campanhas = listarCampanhas();
+  const pesquisas = listarPesquisas();
 
   const concluidas = sessoes.filter((s) => s.status === "concluida");
-  const elegiveis = concluidas.filter((s) => s.resultado?.tipo === "elegivel");
-  const naoElegiveis = concluidas.filter((s) => s.resultado?.tipo === "nao_elegivel");
+  const elegiveis = concluidas.filter((s) => s.resultado?.efeito === "libera");
+  const naoElegiveis = concluidas.filter((s) => s.resultado?.efeito === "recusa");
   const analise = concluidas.filter(
-    (s) => s.resultado?.tipo === "pendente_validacao" || s.resultado?.tipo === "revalidar",
+    (s) => s.resultado?.efeito === "segura",
   );
   const abandonos = sessoes.filter((s) => s.status === "em_andamento");
   const vendas = pedidos.filter((p) => p.status === "concluido");
@@ -185,25 +185,25 @@ export default function Dashboard() {
         </div>
 
         <div>
-          <h3 className="text-lg font-semibold tracking-tight mb-4">Campanhas</h3>
+          <h3 className="text-lg font-semibold tracking-tight mb-4">Pesquisas</h3>
           <Table>
             <THead>
               <tr>
-                <TH>Campanha</TH>
+                <TH>Pesquisa</TH>
                 <TH>Status</TH>
-                <TH className="text-right">Verba usada</TH>
+                <TH className="text-right">Respostas</TH>
               </tr>
             </THead>
             <tbody>
-              {campanhas.map((c) => (
-                <TR key={c.id}>
+              {pesquisas.map((p) => (
+                <TR key={p.id}>
                   <TD>
-                    <div className="text-sm">{c.nome}</div>
-                    <div className="text-xs text-ink-600">{c.modelos.join(", ")}</div>
+                    <div className="text-sm">{p.nome}</div>
+                    {p.chamada && <div className="text-xs text-ink-600">{p.chamada}</div>}
                   </TD>
-                  <TD><Badge tone={c.status === "ativa" ? "go" : "neutral"}>{c.status}</Badge></TD>
-                  <TD className="text-right mono text-xs">
-                    {Math.round((c.verbaConsumida / c.verbaTotal) * 100)}%
+                  <TD><Badge tone={p.status === "ativa" ? "go" : "neutral"}>{p.status}</Badge></TD>
+                  <TD className="text-right text-xs">
+                    {sessoes.filter((s) => s.pesquisaId === p.id).length}
                   </TD>
                 </TR>
               ))}

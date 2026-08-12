@@ -8,7 +8,7 @@ import { cn } from "./ui";
  *
  * Os dois olham para a mesma decisão do motor, cada um do seu lado do balcão.
  * Enquanto cada tela desenhava o resultado do seu jeito, o vendedor via uma
- * faixa de semáforo e quem respondeu via um cartão de campanha — o mesmo fato,
+ * faixa de semáforo e quem respondeu via um cartão de pesquisa — o mesmo fato,
  * em duas linguagens, e nenhuma conversa possível entre as duas pessoas.
  */
 
@@ -82,14 +82,14 @@ export function SeloResultado({ tom }: { tom: Tom }) {
 }
 
 /**
- * A campanha, em cartão de gradiente com a trama de pontos.
+ * A pesquisa, em cartão de gradiente com a trama de pontos.
  *
- * Vem antes do veredito e é o título maior da tela: a campanha é o assunto, e o
+ * Vem antes do veredito e é o título maior da tela: a pesquisa é o assunto, e o
  * veredito é o que aconteceu dentro dela.
  */
-export function CartaoCampanha({
+export function CartaoPesquisa({
   nome,
-  rotulo = "Campanha",
+  rotulo = "Pesquisa",
   sub,
 }: {
   nome: string;
@@ -105,7 +105,7 @@ export function CartaoCampanha({
         className="fill-ink-0/[0.2] [mask-image:radial-gradient(110%_120%_at_0%_100%,black_15%,transparent_70%)]"
       />
       <div className="relative">
-        {/* "Sua campanha" seria bajulação: ninguém escolheu campanha nenhuma, a
+        {/* "Sua pesquisa" seria bajulação: ninguém escolheu pesquisa nenhuma, a
             pessoa clicou num link. E no caminho do não elegível o possessivo
             viraria mentira. */}
         <div className="text-sm text-azul-100">{rotulo}</div>
@@ -120,7 +120,7 @@ export function CartaoCampanha({
  * Veredito: selo, título colorido e o texto de apoio.
  *
  * Exceção declarada à regra de título sempre navy — ela vale porque o veredito
- * não é o h1 da tela: virou legenda do cartão da campanha, e a cor passou a
+ * não é o h1 da tela: virou legenda do cartão da pesquisa, e a cor passou a
  * fazer o trabalho que a hierarquia de tamanho não faz mais.
  */
 export function Veredito({
@@ -140,6 +140,110 @@ export function Veredito({
         <h2 className={cn("display text-2xl md:text-3xl mt-4", cor)}>{titulo}</h2>
       </div>
       {texto && <p className="text-lg text-ink-700 mt-5">{texto}</p>}
+    </>
+  );
+}
+
+/**
+ * O quadro do "e agora": a única instrução da tela final.
+ *
+ * Destacado porque é a ação, e é o que a pessoa vai procurar quando reabrir a
+ * página. O título é curto de propósito — quem lê está de saída.
+ */
+export function ProximoPasso({
+  tom,
+  titulo,
+  texto,
+}: {
+  tom: Tom;
+  titulo: string;
+  texto: React.ReactNode;
+}) {
+  const cores = {
+    go: "border-signal-go/40 bg-signal-go/[0.07] text-signal-go",
+    stop: "border-signal-stop/40 bg-signal-stop/[0.06] text-signal-stop",
+    espera: "border-signal-warn/45 bg-signal-warn/[0.08] text-ink-900",
+    neutro: "hairline bg-ink-100 text-ink-900",
+  }[tom];
+
+  return (
+    <div className={cn("mt-8 rounded-md border px-5 py-5 flex gap-3.5", cores)}>
+      <svg
+        viewBox="0 0 20 20"
+        aria-hidden
+        className="w-5 h-5 shrink-0 mt-0.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      >
+        <circle cx="10" cy="10" r="7.6" />
+        <path d="M10 9.2v5" />
+        <path d="M10 6.1v.1" />
+      </svg>
+      <div>
+        <div className="text-sm font-semibold">{titulo}</div>
+        {/* O corpo volta ao tom de texto: a cor é do quadro, não da leitura. */}
+        <p className="text-base text-ink-800 mt-1.5">{texto}</p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A tela de fim da jornada, inteira — o modelo único.
+ *
+ * Existem duas maneiras de chegar num fim: um bloco de tela final no fluxo, ou
+ * o veredito das regras. Cada uma desenhava a sua versão, e a segunda tinha o
+ * desenho bom: cartão da pesquisa, selo, veredito, motivo, números e o quadro
+ * do próximo passo. Agora é este componente nos dois casos — o que muda é de
+ * onde vem o texto, não a forma.
+ *
+ * Fica sem `ShellFluxo` e sem o botão de sair: quem chama monta a casca, porque
+ * a jornada tem uma transição de saída que a simulação não tem.
+ */
+export function TelaDeDesfecho({
+  nomeDaPesquisa,
+  tom,
+  titulo,
+  texto,
+  motivo,
+  imagemUrl,
+  numeros = [],
+  rotulos,
+  proximoPasso,
+}: {
+  nomeDaPesquisa: string;
+  tom: Tom;
+  titulo: string;
+  texto?: string;
+  /** A frase da regra que decidiu. Só existe quando quem decidiu foi o motor. */
+  motivo?: string;
+  imagemUrl?: string;
+  numeros?: [string, unknown][];
+  rotulos?: Record<string, string>;
+  proximoPasso?: { titulo: string; texto: React.ReactNode };
+}) {
+  return (
+    <>
+      <CartaoPesquisa nome={nomeDaPesquisa} />
+
+      {imagemUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={imagemUrl} alt="" className="max-h-40 mt-8 object-contain" />
+      )}
+
+      <Veredito tom={tom} titulo={titulo} texto={texto} />
+
+      {/* Sem o rótulo "Motivo" em cima: a frase já se apresenta como motivo, e a
+          palavra só ocupava uma linha para anunciar a linha seguinte. */}
+      {motivo && <p className="text-base text-ink-800 mt-8">{motivo}</p>}
+
+      <CartoesNumericos numeros={numeros} rotulos={rotulos} />
+
+      {proximoPasso && (
+        <ProximoPasso tom={tom} titulo={proximoPasso.titulo} texto={proximoPasso.texto} />
+      )}
     </>
   );
 }

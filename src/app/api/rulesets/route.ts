@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
-import { obterCampanha, salvarCampanha } from "@/lib/store";
+import { obterPesquisa } from "@/lib/store";
 import { Regra, RuleSet } from "@/lib/types";
-import { podeAprovar, podePropor } from "@/lib/identidade";
+import { podeRevisar, podePropor } from "@/lib/identidade";
 import { usuarioAtual } from "@/lib/identidade-server";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Propõe uma nova versão. Ela NÃO entra em produção aqui — fica em aprovação
+ * Propõe uma nova versão. Ela NÃO entra em produção aqui — fica em revisão
  * até que outra pessoa a aprove.
  */
 export async function POST(req: Request) {
-  const { campanhaId, regras, descricao } = await req.json() as {
-    campanhaId: string;
+  const { pesquisaId, regras, descricao } = await req.json() as {
+    pesquisaId: string;
     regras: Regra[];
     descricao?: string;
   };
@@ -25,9 +25,9 @@ export async function POST(req: Request) {
     );
   }
 
-  const campanha = obterCampanha(campanhaId);
-  if (!campanha) {
-    return NextResponse.json({ erro: "campanha_nao_encontrada" }, { status: 404 });
+  const pesquisa = obterPesquisa(pesquisaId);
+  if (!pesquisa) {
+    return NextResponse.json({ erro: "pesquisa_nao_encontrada" }, { status: 404 });
   }
   if (!Array.isArray(regras) || regras.length === 0) {
     return NextResponse.json({ erro: "ruleset_vazio" }, { status: 400 });
@@ -42,20 +42,21 @@ export async function POST(req: Request) {
     );
   }
 
-  // Uma proposta pendente por vez evita fila ambígua de aprovação.
-  const pendente = campanha.ruleSets.find((r) => r.status === "em_aprovacao");
+  // Uma proposta pendente por vez evita fila ambígua de revisão.
+  const pendente = pesquisa.versoes.find((r) => r.status === "em_revisao");
   if (pendente) {
     return NextResponse.json(
       {
         erro: "ja_existe_pendente",
-        detalhe: `A v${pendente.versao} já está aguardando aprovação. Resolva-a antes de propor outra.`,
+        detalhe: `A v${pendente.versao} já está em revisão. Resolva-a antes de propor outra.`,
       },
       { status: 409 },
     );
   }
 
   const agora = new Date().toISOString();
-  const proximaVersao = Math.max(...campanha.ruleSets.map((r) => r.versao)) + 1;
+  // `0` como piso: a primeira proposta de uma pesquisa vazia seria `-Infinity`.
+  const proximaVersao = Math.max(0, ...pesquisa.versoes.map((r) => r.versao)) + 1;
   const novo: RuleSet = {
     id: `rs_v${proximaVersao}_${Date.now().toString(36)}`,
     versao: proximaVersao,
@@ -64,13 +65,12 @@ export async function POST(req: Request) {
     descricao: descricao || `Versão ${proximaVersao}`,
     regras,
     ativo: false,
-    status: "em_aprovacao",
+    status: "em_revisao",
     propostoPor: autor.id,
     propostaEm: agora,
   };
 
-  campanha.ruleSets.push(novo);
-  salvarCampanha(campanha);
+  pesquisa.versoes.push(novo);
 
   return NextResponse.json({
     ruleSet: { id: novo.id, versao: novo.versao, status: novo.status },
@@ -78,40 +78,42 @@ export async function POST(req: Request) {
 }
 
 /**
- * Aprova, rejeita ou faz rollback.
- * Regra central: quem propôs não pode aprovar a própria proposta.
+ * Publica, recusa ou faz rollback.
+ *
+ * Regra central: quem propôs não revisa a própria versão — é o duplo-check que
+ * dá sentido ao processo, e por isso a trava é do servidor.
  */
 export async function PATCH(req: Request) {
-  const { campanhaId, ruleSetId, acao, motivo } = await req.json() as {
-    campanhaId: string;
+  const { pesquisaId, ruleSetId, acao, motivo } = await req.json() as {
+    pesquisaId: string;
     ruleSetId: string;
-    acao: "aprovar" | "rejeitar" | "reativar";
+    acao: "publicar" | "recusar" | "reativar";
     motivo?: string;
   };
 
   const usuario = usuarioAtual();
-  const campanha = obterCampanha(campanhaId);
-  if (!campanha) {
-    return NextResponse.json({ erro: "campanha_nao_encontrada" }, { status: 404 });
+  const pesquisa = obterPesquisa(pesquisaId);
+  if (!pesquisa) {
+    return NextResponse.json({ erro: "pesquisa_nao_encontrada" }, { status: 404 });
   }
-  const alvo = campanha.ruleSets.find((r) => r.id === ruleSetId);
+  const alvo = pesquisa.versoes.find((r) => r.id === ruleSetId);
   if (!alvo) {
     return NextResponse.json({ erro: "versao_nao_encontrada" }, { status: 404 });
   }
-  if (!podeAprovar(usuario)) {
+  if (!podeRevisar(usuario)) {
     return NextResponse.json(
-      { erro: "sem_permissao", detalhe: `${usuario.nome} não tem permissão de aprovação.` },
+      { erro: "sem_permissao", detalhe: `${usuario.nome} não revisa versões de regra.` },
       { status: 403 },
     );
   }
 
   const agora = new Date().toISOString();
 
-  if (acao === "aprovar" || acao === "reativar") {
-    if (acao === "aprovar") {
-      if (alvo.status !== "em_aprovacao") {
+  if (acao === "publicar" || acao === "reativar") {
+    if (acao === "publicar") {
+      if (alvo.status !== "em_revisao") {
         return NextResponse.json(
-          { erro: "status_invalido", detalhe: `A v${alvo.versao} não está aguardando aprovação.` },
+          { erro: "status_invalido", detalhe: `A v${alvo.versao} não está em revisão.` },
           { status: 409 },
         );
       }
@@ -119,54 +121,52 @@ export async function PATCH(req: Request) {
       if (alvo.propostoPor === usuario.id) {
         return NextResponse.json(
           {
-            erro: "autoaprovacao",
-            detalhe: "Quem propõe não pode aprovar. Peça a outra pessoa com permissão de aprovação.",
+            erro: "revisao_propria",
+            detalhe: "Quem propõe não revisa a própria versão. Peça a outra pessoa que revise.",
           },
           { status: 403 },
         );
       }
-      alvo.aprovadoPor = usuario.id;
-      alvo.aprovadoEm = agora;
+      alvo.publicadoPor = usuario.id;
+      alvo.publicadoEm = agora;
     }
 
     // Ativa esta e arquiva a que estava valendo.
-    for (const r of campanha.ruleSets) {
+    for (const r of pesquisa.versoes) {
       if (r.id === alvo.id) continue;
       if (r.status === "ativo") r.status = "arquivado";
       r.ativo = false;
     }
     alvo.status = "ativo";
     alvo.ativo = true;
-    campanha.ruleSetAtivoId = alvo.id;
-    salvarCampanha(campanha);
+    pesquisa.versaoAtivaId = alvo.id;
     return NextResponse.json({ ativo: { id: alvo.id, versao: alvo.versao } });
   }
 
-  if (acao === "rejeitar") {
-    if (alvo.status !== "em_aprovacao") {
+  if (acao === "recusar") {
+    if (alvo.status !== "em_revisao") {
       return NextResponse.json(
-        { erro: "status_invalido", detalhe: `A v${alvo.versao} não está aguardando aprovação.` },
+        { erro: "status_invalido", detalhe: `A v${alvo.versao} não está em revisão.` },
         { status: 409 },
       );
     }
     if (alvo.propostoPor === usuario.id) {
       return NextResponse.json(
-        { erro: "autoaprovacao", detalhe: "Quem propõe não avalia a própria proposta." },
+        { erro: "revisao_propria", detalhe: "Quem propõe não revisa a própria versão." },
         { status: 403 },
       );
     }
     if (!motivo || !motivo.trim()) {
       return NextResponse.json(
-        { erro: "motivo_obrigatorio", detalhe: "Explique por que a proposta foi rejeitada." },
+        { erro: "motivo_obrigatorio", detalhe: "Explique por que a versão foi recusada." },
         { status: 400 },
       );
     }
-    alvo.status = "rejeitado";
-    alvo.rejeitadoPor = usuario.id;
-    alvo.rejeitadoEm = agora;
-    alvo.motivoRejeicao = motivo.trim();
-    salvarCampanha(campanha);
-    return NextResponse.json({ rejeitado: { id: alvo.id, versao: alvo.versao } });
+    alvo.status = "recusado";
+    alvo.recusadoPor = usuario.id;
+    alvo.recusadoEm = agora;
+    alvo.motivoRecusa = motivo.trim();
+    return NextResponse.json({ recusado: { id: alvo.id, versao: alvo.versao } });
   }
 
   return NextResponse.json({ erro: "acao_invalida" }, { status: 400 });

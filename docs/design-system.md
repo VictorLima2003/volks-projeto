@@ -52,7 +52,7 @@ Para telas onde a pessoa resolve uma coisa de cada vez, sem nada mais competindo
 
 Para telas onde a pessoa está avaliando informação ou decidindo o próximo passo — não preenchendo
 um campo por vez. Inclui todo o gestor, todo o vendedor, e a home do motorista (`/motorista`),
-porque ali a pessoa ainda não começou a responder nada: está lendo o que é a campanha, vendo "como
+porque ali a pessoa ainda não começou a responder nada: está lendo o que é a oferta, vendo "como
 funciona", decidindo se começa. Isso é mais parecido com a tela de um dashboard do que com uma
 pergunta da jornada.
 

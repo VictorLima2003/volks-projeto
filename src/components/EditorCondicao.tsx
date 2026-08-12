@@ -1,6 +1,6 @@
 "use client";
 
-import { acharFato, GrupoDeFatos, operadoresPara } from "@/lib/engine";
+import { acharFato, GrupoDeFatos, OPERADORES, operadoresPara } from "@/lib/engine";
 import { Condicao, Operador } from "@/lib/types";
 import { Input, Select } from "./ui";
 
@@ -19,7 +19,15 @@ export function EditorCondicao({
 }) {
   const fatoDef = acharFato(grupos, condicao.fato);
   const operadores = operadoresPara(fatoDef?.tipo);
-  const opDef = operadores.find((o) => o.valor === condicao.operador);
+  /*
+   * A definição do operador sai da lista completa, e não da lista filtrada por
+   * tipo. É ela que diz se o operador pede valor — e uma regra escrita antes,
+   * com um operador que não está mais na lista deste tipo, continua sendo uma
+   * regra com valor. Procurando só na lista curta, o campo de valor sumia e o
+   * número guardado ficava invisível na tela.
+   */
+  const opDef = OPERADORES.find((o) => o.valor === condicao.operador);
+  const foraDoTipo = Boolean(opDef) && !operadores.some((o) => o.valor === condicao.operador);
   const comparaVariavel = condicao.valorFato !== undefined;
 
   /** Trocar o fato pode invalidar o operador escolhido. */
@@ -48,9 +56,16 @@ export function EditorCondicao({
 
   return (
     <div className="space-y-2.5">
-      <div className="grid grid-cols-12 gap-2.5">
+      {/*
+       * Empilhado, não em doze colunas.
+       *
+       * A régua de 12 colunas nasceu quando a condição era editada numa página
+       * larga. No inspetor do editor de fluxo, os três campos dividiam 300px e
+       * cada seletor mostrava três letras do nome do fato — que é justamente o
+       * que precisa ser lido para conferir a condição.
+       */}
+      <div className="grid gap-2.5">
         <Select
-          className="col-span-5"
           value={condicao.fato}
           onChange={(e) => mudarFato(e.target.value)}
           aria-label="Fato a comparar"
@@ -68,11 +83,23 @@ export function EditorCondicao({
         </Select>
 
         <Select
-          className="col-span-3"
           value={condicao.operador}
           onChange={(e) => onChange({ ...condicao, operador: e.target.value as Operador })}
           aria-label="Operador"
         >
+          {/*
+           * O operador guardado, mesmo quando não está na lista deste tipo.
+           *
+           * Sem esta opção, o `select` não achava o que casar e mostrava o
+           * primeiro item — a regra dizia "maior ou igual a 6" e a tela exibia
+           * "igual a", sem valor nenhum. Mentira silenciosa, e das piores:
+           * quem abrisse a regra para conferir leria outra coisa.
+           */}
+          {(foraDoTipo || !opDef) && (
+            <option value={condicao.operador}>
+              {opDef?.rotulo ?? condicao.operador} (fora do tipo deste fato)
+            </option>
+          )}
           {operadores.map((o) => (
             <option key={o.valor} value={o.valor}>{o.rotulo}</option>
           ))}
@@ -81,7 +108,6 @@ export function EditorCondicao({
         {opDef?.usaValor ? (
           comparaVariavel ? (
             <Select
-              className="col-span-4"
               value={condicao.valorFato ?? ""}
               onChange={(e) => onChange({ ...condicao, valorFato: e.target.value })}
               aria-label="Comparar com o fato"
@@ -98,7 +124,6 @@ export function EditorCondicao({
             </Select>
           ) : fatoDef?.opcoes && fatoDef.opcoes.length > 0 ? (
             <Select
-              className="col-span-4"
               value={String(condicao.valor ?? "")}
               onChange={(e) => mudarValor(e.target.value)}
               aria-label="Valor"
@@ -110,7 +135,6 @@ export function EditorCondicao({
             </Select>
           ) : (
             <Input
-              className="col-span-4"
               type={fatoDef?.tipo === "numero" ? "number" : "text"}
               value={String(condicao.valor ?? "")}
               onChange={(e) => mudarValor(e.target.value)}
@@ -119,7 +143,7 @@ export function EditorCondicao({
             />
           )
         ) : (
-          <div className="col-span-4 text-sm text-ink-600 px-2 self-center">sem valor</div>
+          <div className="text-sm text-ink-600">Este operador não usa valor.</div>
         )}
       </div>
 

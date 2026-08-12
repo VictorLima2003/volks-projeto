@@ -3,9 +3,11 @@ import {
   criarPedido,
   listarPedidos,
   listarSessoes,
-  obterCampanha,
+  obterPesquisa,
+  versaoAtivaDaPesquisa,
 } from "@/lib/store";
-import { decidir, montarFatos, ruleSetAtivo } from "@/lib/engine";
+import { decidir, montarFatos } from "@/lib/engine";
+import { desfechosDa } from "@/lib/types";
 import { usuarioAtual } from "@/lib/identidade-server";
 
 export const dynamic = "force-dynamic";
@@ -16,24 +18,30 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { cpf, campanhaId, modelo } = body;
+  const { cpf, pesquisaId, modelo } = body;
 
   const autor = usuarioAtual();
 
-  const campanha = obterCampanha(campanhaId);
-  if (!campanha) {
-    return NextResponse.json({ erro: "campanha_nao_encontrada" }, { status: 404 });
+  const pesquisa = obterPesquisa(pesquisaId);
+  if (!pesquisa) {
+    return NextResponse.json({ erro: "pesquisa_nao_encontrada" }, { status: 404 });
   }
 
   // Bloqueio operacional: o pedido só é liberado se o motor confirmar agora.
-  const sessao = listarSessoes(campanhaId)
+  const sessao = listarSessoes(pesquisaId)
     .filter((s) => s.cpf.replace(/\D/g, "") === String(cpf).replace(/\D/g, ""))
     .sort((a, b) => b.atualizadaEm.localeCompare(a.atualizadaEm))[0];
 
   const fatos = montarFatos(sessao?.respostas ?? {}, sessao?.externos ?? {});
-  const decisao = decidir(ruleSetAtivo(campanha), fatos);
+  const rs = versaoAtivaDaPesquisa(pesquisa);
+  if (!rs) {
+    return NextResponse.json({ erro: "sem_regras", detalhe: "Esta pesquisa não tem versão de regra publicada — não há o que liberar." }, { status: 409 });
+  }
+  const decisao = decidir(rs, fatos, desfechosDa(pesquisa));
 
-  if (decisao.tipo !== "elegivel") {
+  /* O que decide não é o nome do desfecho, é o efeito dele. Uma pesquisa pode
+     chamar o seu "libera" de qualquer coisa. */
+  if (decisao.efeito !== "libera") {
     return NextResponse.json(
       { erro: "nao_elegivel", motivo: decisao.motivo, proximaAcao: decisao.proximaAcao },
       { status: 409 },
@@ -41,7 +49,7 @@ export async function POST(req: Request) {
   }
 
   const pedido = criarPedido({
-    campanhaId,
+    pesquisaId,
     cpf,
     /*
      * Autoria e loja vêm da sessão, e o que o corpo mandar é ignorado.
@@ -52,8 +60,10 @@ export async function POST(req: Request) {
      * outra concessionária.
      */
     vendedor: autor.id,
-    concessionaria: autor.concessionaria ?? campanha.concessionaria,
-    modelo: String(modelo ?? campanha.modelos[0] ?? ""),
+    /* A loja é a de quem registra. Não há mais um cadastro de oferta de onde
+       herdar — e herdar dali sempre foi o caso raro, não o comum. */
+    concessionaria: autor.concessionaria ?? "",
+    modelo: String(modelo ?? ""),
     status: "liberado",
   });
 

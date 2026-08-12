@@ -111,6 +111,11 @@ const config: Config = {
       borderRadius: {
         none: "0",
         sm: "6px",
+        /* Degrau da prancheta: os cartões que flutuam sobre o canvas usam 8px,
+           menos que os cartões de página. Cromo de ferramenta pede canto mais
+           seco — o raio de 12/16px do resto do sistema lê como cartão de
+           conteúdo, e ali nada é conteúdo. */
+        ferramenta: "8px",
         DEFAULT: "10px",
         md: "12px",
         lg: "16px",

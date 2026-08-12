@@ -12,7 +12,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Volkswagen · Motor de Elegibilidade",
   description:
-    "Plataforma para construir pesquisas com lógica condicional e decisão automatizada: campanhas, hooks de dados, motor de regras versionadas.",
+    "Plataforma para construir pesquisas com lógica condicional e decisão automatizada: pesquisas, fontes de dados e motor de regras versionadas.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

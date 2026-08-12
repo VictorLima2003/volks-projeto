@@ -3,8 +3,27 @@
 import { papelLegivel, USUARIOS, USUARIO_PADRAO, Usuario, usuarioDoDocumento } from "@/lib/identidade";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { cn } from "./ui";
 
-export function SeletorUsuario({ compacto = false }: { compacto?: boolean }) {
+/**
+ * `abrePara` diz de que lado do botão a lista aparece.
+ *
+ * O padrão "baixo" nasceu no cabeçalho do fluxo, onde o botão fica no alto à
+ * direita. Na barra lateral o mesmo posicionamento jogava a lista para baixo do
+ * rodapé e alinhada à direita do botão — ou seja, para fora da janela pelos dois
+ * lados. No pé da tela ela precisa subir, e encostada à esquerda, que é para
+ * onde há espaço.
+ */
+export function SeletorUsuario({
+  compacto = false,
+  abrePara = "baixo",
+  cheia = false,
+}: {
+  compacto?: boolean;
+  abrePara?: "cima" | "baixo";
+  /** Ocupa a largura do contêiner, como o botão de recolher da barra lateral. */
+  cheia?: boolean;
+}) {
   const router = useRouter();
   // Começa no padrão para o HTML do servidor bater com o do cliente;
   // o cookie real é lido logo após a montagem.
@@ -52,7 +71,7 @@ export function SeletorUsuario({ compacto = false }: { compacto?: boolean }) {
     .join("");
 
   return (
-    <div className="relative">
+    <div className={cheia ? "relative w-full" : "relative"}>
       <button
         type="button"
         onClick={() => setAberto((a) => !a)}
@@ -61,7 +80,9 @@ export function SeletorUsuario({ compacto = false }: { compacto?: boolean }) {
         title={compacto ? atual.nome : undefined}
         className={
           "flex items-center rounded-full border hairline-strong hover:border-vw-deep transition " +
-          (compacto ? "h-11 w-11 justify-center" : "gap-2.5 h-11 pl-1.5 pr-3")
+          (compacto
+            ? "h-11 w-11 justify-center"
+            : "gap-2.5 h-11 pl-1.5 pr-3 " + (cheia ? "w-full" : ""))
         }
       >
         <span className="w-8 h-8 rounded-full bg-vw-deep text-ink-0 text-xs font-bold flex items-center justify-center shrink-0">
@@ -69,8 +90,20 @@ export function SeletorUsuario({ compacto = false }: { compacto?: boolean }) {
         </span>
         {!compacto && (
           <>
-            <span className="text-sm font-semibold hidden lg:inline">{atual.nome}</span>
-            <span className="text-ink-600 text-xs" aria-hidden="true">▾</span>
+            {/*
+             * Ocupando a largura toda, o nome não some em tela estreita: quem
+             * esconde a barra inteira é o modo recolhido, e `hidden lg:inline`
+             * deixava uma pílula larga e vazia entre o avatar e a seta.
+             */}
+            <span
+              className={cn(
+                "text-sm font-semibold truncate",
+                cheia ? "flex-1 text-left" : "hidden lg:inline",
+              )}
+            >
+              {atual.nome}
+            </span>
+            <span className="text-ink-600 text-xs shrink-0" aria-hidden="true">▾</span>
           </>
         )}
       </button>
@@ -78,11 +111,18 @@ export function SeletorUsuario({ compacto = false }: { compacto?: boolean }) {
       {aberto && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setAberto(false)} />
-          <div className="absolute right-0 top-full mt-2 z-50 w-80 bg-ink-0 border hairline-strong rounded-md shadow-lift p-2">
+          <div
+            className={
+              /* `max-h`/`overflow`: são seis pessoas mais o rodapé, e subindo a
+                 partir do pé da tela a lista passava do topo em janela baixa. */
+              "absolute z-50 w-80 max-h-[70vh] overflow-y-auto bg-ink-0 border hairline-strong rounded-md shadow-lift p-2 " +
+              (abrePara === "cima" ? "left-0 bottom-full mb-2" : "right-0 top-full mt-2")
+            }
+          >
             {/*
              * Trocar de pessoa é parte do trabalho enquanto não há login: sem
-             * isso não dá para ver os dois lados da aprovação, já que ninguém
-             * aprova a própria proposta, nem para abrir a carteira de um
+             * isso não dá para ver os dois lados da revisão, já que ninguém
+             * revisa a própria versão, nem para abrir a carteira de um
              * vendedor. Some quando existir login de verdade.
              */}
             <div className="px-3 py-2 text-sm font-semibold text-ink-600">Entrar como</div>
@@ -109,7 +149,7 @@ export function SeletorUsuario({ compacto = false }: { compacto?: boolean }) {
               </button>
             ))}
             <p className="px-3 py-2 text-xs text-ink-600 border-t hairline mt-2">
-              Protótipo sem login. Troque de pessoa para ver os dois lados da aprovação.
+              Protótipo sem login. Troque de pessoa para ver os dois lados da revisão.
             </p>
 
             <button

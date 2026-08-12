@@ -29,7 +29,7 @@ const areas = [
     href: "/gestor",
     titulo: "Gestor",
     descricao:
-      "Campanhas, pesquisa, regras de elegibilidade, aprovações e indicadores.",
+      "Pesquisas, fontes de dados, regras de decisão e indicadores.",
     acento: "bg-ink-900",
   },
 ];

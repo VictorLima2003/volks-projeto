@@ -1,5 +1,5 @@
 import { ShellFluxo } from "@/components/ShellFluxo";
-import { BotaoCopiar } from "./copiar";
+import { BotaoCopiar } from "@/components/BotaoCopiar";
 
 /**
  * Saiu da home do motorista: é ferramenta de quem testa o produto, não conteúdo

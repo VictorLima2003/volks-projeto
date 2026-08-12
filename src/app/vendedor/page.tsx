@@ -26,7 +26,7 @@ export default function VendedorHome() {
     liberados: pedidos.filter((p) => p.status === "liberado").length,
     bloqueados: pedidos.filter((p) => p.status === "bloqueado").length,
     concluidos: pedidos.filter((p) => p.status === "concluido").length,
-    elegiveis: sessoes.filter((s) => s.resultado?.tipo === "elegivel").length,
+    elegiveis: sessoes.filter((s) => s.resultado?.efeito === "libera").length,
   };
 
   const recentes = maisRecentes(pedidos);

@@ -75,7 +75,10 @@ export async function executarHook(
   const inicio = Date.now();
   const logs: string[] = [];
 
-  const anexos = new Map(hook.anexos.map((a) => [a.nome, a.conteudo]));
+  /* `?? []`: hook gravado antes dos anexos existirem — ou vindo de fora, pelo
+     teste avulso — não tem a lista, e o `.map` derrubava a execução inteira
+     antes de o código do autor rodar. */
+  const anexos = new Map((hook.anexos ?? []).map((a) => [a.nome, a.conteudo]));
 
   /** Lê um anexo ou uma URL, sempre devolvendo linhas já convertidas. */
   const csv = async (nomeOuUrl: string): Promise<Record<string, string>[]> => {

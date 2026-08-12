@@ -32,6 +32,16 @@ export interface GradientBlindsProps {
   distortAmount?: number;
   shineDirection?: 'left' | 'right';
   mixBlendMode?: string;
+  /**
+   * Prende o holofote num ponto fixo, em fração da área (`[x, y]`, y de baixo
+   * para cima), e desliga o rastreamento do ponteiro.
+   *
+   * Existe por causa das miniaturas: o efeito estava montado, mas o holofote
+   * seguia o cursor — e com o cursor longe da peça ela ficava escura, como se
+   * o fundo não funcionasse. Só acendia sob o mouse, que é exatamente o que
+   * uma galeria de comparação não pode exigir.
+   */
+  spotlightFixed?: [number, number];
 }
 
 const MAX_COLORS = 8;
@@ -68,7 +78,8 @@ const GradientBlinds: React.FC<GradientBlindsProps> = ({
   spotlightOpacity = 1,
   distortAmount = 0,
   shineDirection = 'left',
-  mixBlendMode = 'lighten'
+  mixBlendMode = 'lighten',
+  spotlightFixed
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -283,7 +294,16 @@ void main() {
     meshRef.current = mesh;
 
     const resize = () => {
-      const rect = container.getBoundingClientRect();
+      /*
+       * `offsetWidth/Height`, e não `getBoundingClientRect`.
+       *
+       * O retângulo já vem com as transformações aplicadas. Dentro de um pai
+       * reduzido por `scale()` — a prévia da capa faz isso — a medida chegava
+       * menor que a caixa, o canvas era criado com 86% do tamanho e sobrava uma
+       * faixa sem fundo à direita e embaixo. A medida de layout ignora a escala,
+       * que é o que se quer: o canvas preenche a caixa e escala junto com ela.
+       */
+      const rect = { width: container.offsetWidth, height: container.offsetHeight };
       renderer.setSize(rect.width, rect.height);
       uniforms.iResolution.value = [gl.drawingBufferWidth, gl.drawingBufferHeight, 1];
 
@@ -296,7 +316,15 @@ void main() {
         uniforms.uBlindCount.value = Math.max(1, blindCount);
       }
 
-      if (firstResizeRef.current) {
+      /* O holofote preso é recolocado a cada medida: a peça muda de tamanho
+         quando o painel rola ou a janela muda, e uma posição em píxeis fixada
+         uma vez só sairia do lugar. */
+      if (spotlightFixed) {
+        const px = gl.drawingBufferWidth * spotlightFixed[0];
+        const py = gl.drawingBufferHeight * spotlightFixed[1];
+        uniforms.iMouse.value = [px, py];
+        mouseTargetRef.current = [px, py];
+      } else if (firstResizeRef.current) {
         firstResizeRef.current = false;
         const cx = gl.drawingBufferWidth / 2;
         const cy = gl.drawingBufferHeight / 2;
@@ -324,7 +352,7 @@ void main() {
     // elemento nessa condição nunca recebe `pointermove`. Preso ao canvas, o
     // holofote ficava parado no centro. A conta já é feita contra o retângulo
     // do canvas, então ouvir mais longe não muda o resultado.
-    window.addEventListener('pointermove', onPointerMove);
+    if (!spotlightFixed) window.addEventListener('pointermove', onPointerMove);
 
     const loop = (t: number) => {
       rafRef.current = requestAnimationFrame(loop);
@@ -388,7 +416,8 @@ void main() {
     spotlightSoftness,
     spotlightOpacity,
     distortAmount,
-    shineDirection
+    shineDirection,
+    spotlightFixed
   ]);
 
   return (

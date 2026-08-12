@@ -3,7 +3,6 @@ import {
   BlocoConsulta,
   BlocoFeedback,
   BlocoPergunta,
-  Campanha,
   Condicao,
   DecisaoResultado,
   ehCondicional,
@@ -13,8 +12,10 @@ import {
   Hook,
   Operador,
   Regra,
-  ResultadoTipo,
   RuleSet,
+  acharDesfecho,
+  Desfecho,
+  DESFECHOS_PADRAO,
 } from "./types";
 
 // --------------------------------------------------------------------------
@@ -161,15 +162,24 @@ function fatosCitadosPor(cond: Condicao, fatos: Fatos): Record<string, unknown> 
 // --------------------------------------------------------------------------
 // Aplicar regras (por prioridade crescente → 1ª que casar vence)
 // --------------------------------------------------------------------------
+/**
+ * A primeira regra que casa decide.
+ *
+ * `desfechos` entra porque a decisão grava o **efeito** junto: a sessão é
+ * histórico, e o que o desfecho fazia no dia é o que vale para o pedido que foi
+ * liberado naquele dia — mesmo que alguém mude o desfecho depois.
+ */
 export function decidir(
   ruleSet: RuleSet,
   fatos: Fatos,
+  desfechos: Desfecho[] = DESFECHOS_PADRAO,
 ): DecisaoResultado {
   const ordenadas = [...ruleSet.regras].sort((a, b) => a.prioridade - b.prioridade);
   for (const regra of ordenadas) {
     if (avaliarCondicao(regra.condicao, fatos)) {
       return {
         tipo: regra.resultado,
+        efeito: acharDesfecho(desfechos, regra.resultado).efeito,
         motivo: regra.motivo,
         proximaAcao: regra.proximaAcao,
         regraAplicadaId: regra.id,
@@ -183,7 +193,8 @@ export function decidir(
   }
   return {
     tipo: "erro",
-    motivo: "Nenhuma regra aplicável — verifique configuração da campanha.",
+    efeito: acharDesfecho(desfechos, "erro").efeito,
+    motivo: "Nenhuma regra aplicável — verifique a régua desta pesquisa.",
     ruleSetVersao: ruleSet.versao,
     decididoEm: new Date().toISOString(),
     contexto: {},
@@ -197,7 +208,8 @@ export interface PassoTrace {
   regraId: string;
   nome: string;
   prioridade: number;
-  resultado: ResultadoTipo;
+  /** Id do desfecho que a regra produz. */
+  resultado: string;
   casou: boolean;
   vencedora: boolean;
   /** "credito.score ≥ 700" com o valor real observado ao lado */
@@ -222,6 +234,7 @@ export interface TermoTrace {
 export function decidirComTrace(
   ruleSet: RuleSet,
   fatos: Fatos,
+  desfechos: Desfecho[] = DESFECHOS_PADRAO,
 ): { decisao: DecisaoResultado; trace: PassoTrace[] } {
   const ordenadas = [...ruleSet.regras].sort((a, b) => a.prioridade - b.prioridade);
   const trace: PassoTrace[] = [];
@@ -242,7 +255,7 @@ export function decidirComTrace(
     });
   }
 
-  return { decisao: decidir(ruleSet, fatos), trace };
+  return { decisao: decidir(ruleSet, fatos, desfechos), trace };
 }
 
 /** Achata a condição em termos individuais, cada um com o valor realmente observado. */
@@ -276,7 +289,7 @@ export function lerFato(caminho: string, fatos: Fatos): unknown {
 
 /**
  * Diff entre duas versões, em linguagem de negócio.
- * Usado tanto na tela de regras quanto na fila de aprovação.
+ * Usado tanto na tela de regras quanto na fila de revisão.
  */
 export function diffRuleSets(atual: RuleSet, anterior?: RuleSet): string[] {
   if (!anterior) return [];
@@ -310,27 +323,47 @@ export function diffRuleSets(atual: RuleSet, anterior?: RuleSet): string[] {
 }
 
 // Não existe mais lista fixa de fatos: tudo vem das perguntas da pesquisa e
-// dos hooks da campanha. O motor não conhece nenhuma fonte por nome.
+// dos hooks cadastrados. O motor não conhece nenhuma fonte por nome.
 
 /**
- * Fatos das fontes externas da campanha, deduzidos do script de cada uma.
+ * Fatos das fontes externas, deduzidos do script de cada uma.
  * O script é JS livre, então lemos as chaves do objeto que ele retorna —
  * é uma leitura estática simples, suficiente para popular o seletor.
  */
+/**
+ * Palpite de tipo a partir do que está escrito depois dos dois-pontos.
+ *
+ * Só literais: `14` é número, `true` é booleano, `"ativo"` é texto. Qualquer
+ * outra coisa — uma variável, uma chamada, uma conta — vira `desconhecido`, e
+ * aí a tela oferece todos os operadores em vez de adivinhar errado. Errar para
+ * "texto", que era o comportamento anterior, escondia as comparações numéricas.
+ */
+function palpiteDeTipo(bruto: string): TipoFato {
+  const v = bruto.trim();
+  if (/^-?\d+(\.\d+)?\b/.test(v)) return "numero";
+  if (/^(true|false)\b/.test(v)) return "booleano";
+  if (/^['"`]/.test(v)) return "texto";
+  return "desconhecido";
+}
+
 export function fatosDoHook(hooks: { prefixo: string; codigo: string; nome: string }[]) {
-  const saida: { chave: string; rotulo: string; tipo: "texto" }[] = [];
+  const saida: { chave: string; rotulo: string; tipo: TipoFato }[] = [];
   for (const f of hooks) {
     saida.push({
       chave: `${f.prefixo}.encontrado`,
       rotulo: `${f.nome}: encontrado`,
-      tipo: "texto",
+      tipo: "booleano",
     });
-    // Captura `nomeDaChave:` dentro do objeto retornado pelo código.
-    const chaves = new Set(
-      Array.from(f.codigo.matchAll(/^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/gm)).map((m) => m[1]),
-    );
-    for (const k of chaves) {
-      saida.push({ chave: `${f.prefixo}.${k}`, rotulo: `${f.nome}: ${k}`, tipo: "texto" });
+    // Captura `nomeDaChave: valor` dentro do objeto retornado pelo código.
+    const achados = new Map<string, TipoFato>();
+    for (const m of f.codigo.matchAll(/^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*(.*)$/gm)) {
+      /* Primeira ocorrência ganha: hooks costumam devolver o objeto completo no
+         caminho feliz e um objeto reduzido no `if (!achou)`, onde os mesmos
+         campos aparecem como `null`. */
+      if (!achados.has(m[1])) achados.set(m[1], palpiteDeTipo(m[2]));
+    }
+    for (const [k, tipo] of achados) {
+      saida.push({ chave: `${f.prefixo}.${k}`, rotulo: `${f.nome}: ${k}`, tipo });
     }
   }
   return saida;
@@ -339,7 +372,16 @@ export function fatosDoHook(hooks: { prefixo: string; codigo: string; nome: stri
 // --------------------------------------------------------------------------
 // Catálogo de fatos: o que está disponível para comparar, e de onde vem
 // --------------------------------------------------------------------------
-export type TipoFato = "numero" | "texto" | "booleano";
+/**
+ * `desconhecido` é o tipo dos fatos que vêm de hook.
+ *
+ * O hook é código: o que ele devolve só se sabe rodando. Chutar "texto" — que
+ * era o que acontecia — não era um detalhe de rótulo: o seletor de operador
+ * some com "maior que" e "menor que" para texto, e não havia como escrever
+ * "meses de app maior ou igual a 6" pela tela. Sem tipo declarado, o certo é
+ * oferecer tudo e deixar a comparação com quem conhece o dado.
+ */
+export type TipoFato = "numero" | "texto" | "booleano" | "desconhecido";
 
 export interface ItemDeFato {
   chave: string;
@@ -389,7 +431,7 @@ export function catalogoDeFatos(
     const itens = fatosDoHook([f]).map((i) => ({
       chave: i.chave,
       rotulo: i.rotulo.replace(`${f.nome}: `, ""),
-      tipo: (i.chave.endsWith(".encontrado") ? "booleano" : "texto") as TipoFato,
+      tipo: i.tipo,
     }));
     if (itens.length > 0) {
       grupos.push({ grupo: `Hook: ${f.nome}`, itens });
@@ -434,9 +476,14 @@ export function operadoresPara(tipo: TipoFato | undefined): typeof OPERADORES {
   if (tipo === "booleano") {
     return OPERADORES.filter((o) => ["truthy", "falsy", "=", "!="].includes(o.valor));
   }
-  return OPERADORES.filter((o) =>
-    ["=", "!=", "contem", "naoContem", "comecaCom", "exists", "missing"].includes(o.valor),
-  );
+  if (tipo === "texto") {
+    return OPERADORES.filter((o) =>
+      ["=", "!=", "contem", "naoContem", "comecaCom", "exists", "missing"].includes(o.valor),
+    );
+  }
+  /* Tipo desconhecido — fato de hook sem literal para inspecionar. Todos os
+     operadores: cortar a lista aqui é esconder comparações que o motor faz. */
+  return OPERADORES;
 }
 
 export const OPERADORES: { valor: Operador; rotulo: string; usaValor: boolean }[] = [
@@ -577,12 +624,17 @@ export function contarBlocos(blocos: Bloco[]): { perguntas: number; condicionais
 }
 
 // --------------------------------------------------------------------------
-// Utilidade: obter ruleset ativo
+// Utilidade: obter a versão que decide
 // --------------------------------------------------------------------------
-export function ruleSetAtivo(c: Campanha): RuleSet {
-  const rs = c.ruleSets.find((r) => r.id === c.ruleSetAtivoId);
-  if (!rs) throw new Error(`RuleSet ativo não encontrado para ${c.id}`);
-  return rs;
+/**
+ * A versão que vale, dentre as que a pesquisa guarda.
+ *
+ * Devolve `undefined` em vez de estourar: pesquisa sem regra nenhuma é caso
+ * legítimo — quem só coleta não decide — e um `throw` obrigaria toda tela a
+ * proteger a chamada para um estado normal do produto.
+ */
+export function versaoQueDecide(versoes: RuleSet[], versaoAtivaId?: string): RuleSet | undefined {
+  return versoes.find((r) => r.id === versaoAtivaId);
 }
 
 // --------------------------------------------------------------------------
@@ -592,30 +644,33 @@ export function explicarRegra(regra: Regra): string {
   return `${regra.nome} → ${resultadoLabel(regra.resultado)}: ${explicarCond(regra.condicao)}`;
 }
 
-export function resultadoLabel(t: Regra["resultado"]): string {
-  const map: Record<Regra["resultado"], string> = {
-    elegivel: "Elegível",
-    nao_elegivel: "Não elegível",
-    pendente_validacao: "Pendente de validação",
-    revalidar: "Revalidar",
-    erro: "Erro",
-  };
-  return map[t];
+/**
+ * O rótulo de um desfecho, para as telas de gestão.
+ *
+ * Recebe a lista da pesquisa porque o nome é dela, não do produto. Sem lista,
+ * cai nos cinco padrões — que é o que as telas viam quando o nome era enum.
+ */
+export function resultadoLabel(id: string, desfechos: Desfecho[] = DESFECHOS_PADRAO): string {
+  return acharDesfecho(desfechos, id).rotulo;
 }
 
 /**
- * Critérios de elegibilidade da campanha, em linguagem de gente.
+ * Os critérios que o vendedor lê, em linguagem de gente.
  *
- * Sai da regra que concede `elegivel` no RuleSet ativo — não de texto escrito à
- * mão em lugar nenhum. É o que faz a frase continuar verdadeira quando o gestor
- * muda a régua: mudou a regra, mudou o que a tela diz.
+ * Saem da primeira regra que **libera** — não de texto escrito à mão, e não do
+ * desfecho chamado "elegivel": é o efeito que define o que "passar" quer dizer,
+ * e o nome dele é de quem montou a pesquisa. Mudou a regra, mudou a frase.
  *
  * Continua sem saber de negócio: o nome do fato vira rótulo por regra mecânica,
  * e o prefixo do hook é descartado porque quem lê não escolheu fonte nenhuma.
  */
-export function criteriosLegiveis(rs: RuleSet, rotulos: Record<string, string> = {}): string[] {
+export function criteriosLegiveis(
+  rs: RuleSet,
+  rotulos: Record<string, string> = {},
+  desfechos: Desfecho[] = DESFECHOS_PADRAO,
+): string[] {
   const regra = rs.regras
-    .filter((r) => r.resultado === "elegivel")
+    .filter((r) => acharDesfecho(desfechos, r.resultado).efeito === "libera")
     .sort((a, b) => a.prioridade - b.prioridade)[0];
   if (!regra) return [];
 
@@ -683,4 +738,35 @@ function explicarCond(c: Condicao): string {
   };
   const rhs = c.valor === undefined ? "" : ` ${JSON.stringify(c.valor)}`;
   return `${c.fato} ${op[c.operador] ?? c.operador}${rhs}`;
+}
+
+// --------------------------------------------------------------------------
+// Texto de desfecho: as duas trocas que a tela final faz
+// --------------------------------------------------------------------------
+/**
+ * Troca `{nome}` e `{identificador}` no texto escrito pelo autor.
+ *
+ * São duas e são fechadas de propósito. Um mecanismo de variáveis livres
+ * pareceria mais poderoso e seria pior: quem escreve não tem como saber quais
+ * fatos existem no meio de uma frase, e um `{corridas}` que não veio viraria
+ * chave crua na tela de quem responde.
+ *
+ * `{nome}` carrega a vírgula junto — "{nome}você está elegível!" vira "Marcos,
+ * você está elegível!" ou "Você está elegível!". Sem hook que traga nome, a
+ * frase se resolve com maiúscula, como sempre se resolveu.
+ */
+export function preencherTexto(
+  texto: string,
+  trocas: { nome?: string | null; identificador?: string },
+): string {
+  const semNome = !trocas.nome;
+  const saida = texto
+    .replace(/\{nome\}/g, trocas.nome ? `${trocas.nome}, ` : "")
+    .replace(/\{identificador\}/g, trocas.identificador ?? "");
+
+  /* Sem nome, a frase começa onde começava a continuação — e continuação
+     começa em minúscula. */
+  return semNome && texto.startsWith("{nome}")
+    ? saida.charAt(0).toUpperCase() + saida.slice(1)
+    : saida;
 }

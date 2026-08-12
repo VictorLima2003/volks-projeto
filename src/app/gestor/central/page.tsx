@@ -1,18 +1,20 @@
 import { AjudaDaTela, ItemAjuda } from "@/components/AjudaDaTela";
 import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, Stat, Table, TD, TH, THead, TR } from "@/components/ui";
-import { listarSessoes, listarCampanhas } from "@/lib/store";
+import { listarSessoes, listarPesquisas } from "@/lib/store";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 export default function Central() {
   const sessoes = listarSessoes();
-  const campanhas = listarCampanhas();
-  const nomeCampanha = (id: string) => campanhas.find((c) => c.id === id)?.nome ?? id;
+  const pesquisas = listarPesquisas();
+  const nomeDaPesquisa = (id: string) => pesquisas.find((p) => p.id === id)?.nome ?? id;
 
   const excecoes = sessoes.filter(
-    (s) => s.resultado?.tipo === "pendente_validacao" || s.resultado?.tipo === "revalidar" || s.resultado?.tipo === "erro",
+    /* A central cuida do que ficou parado — qualquer desfecho que segure, tenha
+       o nome que tiver nesta pesquisa. */
+    (s) => s.resultado?.efeito === "segura",
   );
   // "Sem registro" agora significa: nenhum hook achou o respondente.
   const semCpfNaBase = excecoes.filter((s) =>
@@ -35,7 +37,7 @@ export default function Central() {
             Nome ou cidade não batem. Valida o cadastro antes de liberar a jornada comercial.
           </ItemAjuda>
           <ItemAjuda termo="Elegibilidade expirada">
-            Motorista aprovado há muito tempo precisa revalidar antes do pedido.
+            Quem passou há muito tempo precisa revalidar antes do pedido.
           </ItemAjuda>
         </AjudaDaTela>
       }
@@ -60,7 +62,7 @@ export default function Central() {
           <THead>
             <tr>
               <TH>CPF</TH>
-              <TH>Campanha</TH>
+              <TH>Pesquisa</TH>
               <TH>Tipo</TH>
               <TH>Motivo</TH>
               <TH>Ação sugerida</TH>
@@ -72,7 +74,7 @@ export default function Central() {
             {excecoes.map((s) => (
               <TR key={s.id}>
                 <TD className="mono text-xs">{s.cpf}</TD>
-                <TD className="text-xs">{nomeCampanha(s.campanhaId)}</TD>
+                <TD className="text-xs">{nomeDaPesquisa(s.pesquisaId)}</TD>
                 <TD>
                   <Badge tone={s.resultado?.tipo === "erro" ? "stop" : "warn"}>
                     {s.resultado?.tipo.replace("_", " ")}
@@ -100,7 +102,7 @@ export default function Central() {
           <THead>
             <tr>
               <TH>CPF</TH>
-              <TH>Campanha</TH>
+              <TH>Pesquisa</TH>
               <TH>Iniciada</TH>
               <TH>Respostas coletadas</TH>
             </tr>
@@ -109,7 +111,7 @@ export default function Central() {
             {abandonadas.map((s) => (
               <TR key={s.id}>
                 <TD className="mono text-xs">{s.cpf}</TD>
-                <TD className="text-xs">{nomeCampanha(s.campanhaId)}</TD>
+                <TD className="text-xs">{nomeDaPesquisa(s.pesquisaId)}</TD>
                 <TD className="mono text-xs text-ink-600">{s.iniciadaEm.slice(0, 16).replace("T", " ")}</TD>
                 <TD className="text-xs text-ink-700">{Object.keys(s.respostas).length} campo(s)</TD>
               </TR>

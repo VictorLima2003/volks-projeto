@@ -1,19 +1,19 @@
 import {
   Bloco,
-  Campanha,
   Hook,
   Pedido,
+  Pesquisa,
   Regra,
   RuleSet,
   SessaoMotorista,
 } from "./types";
 
 // --------------------------------------------------------------------------
-// Base Uber (mock) - contexto compartilhado entre campanhas
+// Base Uber (mock) - contexto compartilhado entre pesquisas
 // --------------------------------------------------------------------------
 
 // --------------------------------------------------------------------------
-// Perguntas base para uma campanha típica
+// Perguntas base de uma pesquisa de elegibilidade
 // --------------------------------------------------------------------------
 /**
  * A pesquisa padrão como árvore. A indentação já conta a história:
@@ -189,7 +189,7 @@ const blocosPadrao: Bloco[] = [
  * A base de parceiros é um hook como outro qualquer — não há nada de "Uber"
  * dentro do motor. Trocar este CSV por um `fetch` na API real é mexer só aqui.
  */
-const hookBaseParceiro: Hook = {
+export const hookBaseParceiro: Hook = {
   id: "hook_uber",
   nome: "Base de parceiros",
   descricao: "Localiza o respondente na base compartilhada pelo parceiro.",
@@ -469,51 +469,55 @@ const ruleSetV1: RuleSet = {
   status: "ativo",
   propostoPor: "ana.produto@volkswagen",
   propostaEm: "2026-01-14T16:30:00Z",
-  aprovadoPor: "marina.compliance@volkswagen",
-  aprovadoEm: "2026-01-15T10:00:00Z",
+  publicadoPor: "marina.compliance@volkswagen",
+  publicadoEm: "2026-01-15T10:00:00Z",
 };
 
 // --------------------------------------------------------------------------
-// Campanhas mockadas
+// O que o sistema já traz pronto
 // --------------------------------------------------------------------------
-export const CAMPANHAS_SEED: Campanha[] = [
+/** As fontes de dado do sistema. Uma coleção só, compartilhada por todas. */
+export const HOOKS_SEED: Hook[] = [hookBaseParceiro, hookCredito, hookApiParceira];
+
+/**
+ * As pesquisas de exemplo.
+ *
+ * São duas ofertas que fazem as mesmas perguntas — e é exatamente por isso que
+ * são duas pesquisas, com os blocos copiados, e não uma compartilhada: o dia em
+ * que uma precisar de uma pergunta a mais, ela muda sozinha.
+ *
+ * O que difere entre elas está onde tem que estar: os modelos, nas opções da
+ * pergunta de modelo; a região, no texto das perguntas e da chamada.
+ */
+export const PESQUISAS_SEED: Pesquisa[] = [
   {
-    id: "camp_tcross_sp",
+    id: "pesq_tcross_sp",
     nome: "T-Cross Uber SP · 1º Semestre",
-    concessionaria: "Rede VW São Paulo",
-    modelos: ["T-Cross", "Nivus", "Polo Track"],
-    cidadesAlvo: ["São Paulo", "Campinas"],
-    ufsAlvo: ["SP"],
-    faixasEtarias: ["25-34", "35-44", "45-54"],
-    verbaTotal: 4_800_000,
-    verbaConsumida: 1_240_000,
-    vigenciaInicio: "2026-06-01",
-    vigenciaFim: "2026-12-31",
+    descricao:
+      "Você dirige por aplicativo e a Volkswagen já tem os dados que precisa conferir. Digite seu CPF e veja a resposta nesta mesma tela.",
     status: "ativa",
+    blocos: JSON.parse(JSON.stringify(blocosPadrao)),
+    /* Cada pesquisa carrega as próprias versões. As duas nascem iguais porque
+       são a mesma oferta em duas praças — e a partir daqui cada uma segue seu
+       caminho sem mexer na outra. */
+    versoes: [ruleSetV1],
+    versaoAtivaId: ruleSetV1.id,
+    chamada: "T-Cross, Nivus ou Polo Track na condição de motorista",
     criadaEm: "2026-05-20T14:00:00Z",
-    blocos: blocosPadrao,
-    hooks: [hookBaseParceiro, hookCredito, hookApiParceira],
-    ruleSets: [ruleSetV1],
-    ruleSetAtivoId: ruleSetV1.id,
+    atualizadaEm: "2026-05-20T14:00:00Z",
   },
   {
-    id: "camp_polo_rj",
+    id: "pesq_polo_rj",
     nome: "Polo Track Uber RJ · Piloto",
-    concessionaria: "VW Barra RJ",
-    modelos: ["Polo Track", "Virtus"],
-    cidadesAlvo: ["Rio de Janeiro"],
-    ufsAlvo: ["RJ"],
-    faixasEtarias: ["25-34", "35-44"],
-    verbaTotal: 1_200_000,
-    verbaConsumida: 210_000,
-    vigenciaInicio: "2026-07-15",
-    vigenciaFim: "2026-10-15",
+    descricao:
+      "Você dirige por aplicativo no Rio e a Volkswagen já tem os dados que precisa conferir. Digite seu CPF e veja a resposta nesta mesma tela.",
     status: "ativa",
+    blocos: JSON.parse(JSON.stringify(blocosPadrao)),
+    versoes: [JSON.parse(JSON.stringify({ ...ruleSetV1, id: "rs_v1_rj" }))],
+    versaoAtivaId: "rs_v1_rj",
+    chamada: "Polo Track ou Virtus na condição de motorista",
     criadaEm: "2026-07-10T09:00:00Z",
-    blocos: blocosPadrao,
-    hooks: [hookBaseParceiro, hookCredito, hookApiParceira],
-    ruleSets: [ruleSetV1],
-    ruleSetAtivoId: ruleSetV1.id,
+    atualizadaEm: "2026-07-10T09:00:00Z",
   },
 ];
 
@@ -523,7 +527,7 @@ export const CAMPANHAS_SEED: Campanha[] = [
 export const PEDIDOS_SEED: Pedido[] = [
   {
     id: "ped_001",
-    campanhaId: "camp_tcross_sp",
+    pesquisaId: "pesq_tcross_sp",
     cpf: "111.222.333-44",
     vendedor: "julia.barrafunda@volkswagen",
     concessionaria: "VW Barra Funda (SP)",
@@ -533,7 +537,7 @@ export const PEDIDOS_SEED: Pedido[] = [
   },
   {
     id: "ped_002",
-    campanhaId: "camp_tcross_sp",
+    pesquisaId: "pesq_tcross_sp",
     cpf: "444.555.666-77",
     vendedor: "julia.barrafunda@volkswagen",
     concessionaria: "VW Barra Funda (SP)",
@@ -544,7 +548,7 @@ export const PEDIDOS_SEED: Pedido[] = [
   },
   {
     id: "ped_003",
-    campanhaId: "camp_polo_rj",
+    pesquisaId: "pesq_polo_rj",
     cpf: "333.444.555-66",
     vendedor: "bruno.barrarj@volkswagen",
     concessionaria: "VW Barra (RJ)",
@@ -557,7 +561,7 @@ export const PEDIDOS_SEED: Pedido[] = [
 export const SESSOES_SEED: SessaoMotorista[] = [
   {
     id: "s_001",
-    campanhaId: "camp_tcross_sp",
+    pesquisaId: "pesq_tcross_sp",
     cpf: "111.222.333-44",
     iniciadaEm: "2026-08-01T11:40:00Z",
     atualizadaEm: "2026-08-01T11:52:00Z",
@@ -573,6 +577,7 @@ export const SESSOES_SEED: SessaoMotorista[] = [
     respostas: { consentimento: true, modelo: "T-Cross", concessionaria: "VW Barra Funda (SP)", canalContato: "WhatsApp" },
     resultado: {
       tipo: "elegivel",
+      efeito: "libera",
       motivo: "Você atende aos critérios: 6 meses ou mais e 500 corridas ou mais.",
       proximaAcao: "Vendedor liberado a montar pedido na concessionária escolhida.",
       regraAplicadaId: "r_ok",
@@ -584,7 +589,7 @@ export const SESSOES_SEED: SessaoMotorista[] = [
   },
   {
     id: "s_002",
-    campanhaId: "camp_tcross_sp",
+    pesquisaId: "pesq_tcross_sp",
     cpf: "444.555.666-77",
     iniciadaEm: "2026-08-02T09:10:00Z",
     atualizadaEm: "2026-08-02T09:20:00Z",
@@ -596,6 +601,7 @@ export const SESSOES_SEED: SessaoMotorista[] = [
     respostas: { consentimento: true },
     resultado: {
       tipo: "nao_elegivel",
+      efeito: "recusa",
       motivo: "Elegibilidade exige 500 corridas ou mais concluídas.",
       proximaAcao: "Motorista pode retornar após completar 500 corridas.",
       regraAplicadaId: "r_corridas",
@@ -607,7 +613,7 @@ export const SESSOES_SEED: SessaoMotorista[] = [
   },
   {
     id: "s_003",
-    campanhaId: "camp_polo_rj",
+    pesquisaId: "pesq_polo_rj",
     cpf: "333.444.555-66",
     iniciadaEm: "2026-08-03T13:50:00Z",
     atualizadaEm: "2026-08-03T14:02:00Z",
@@ -619,6 +625,7 @@ export const SESSOES_SEED: SessaoMotorista[] = [
     respostas: { consentimento: true, modelo: "Polo Track", concessionaria: "VW Barra (RJ)", canalContato: "Telefone" },
     resultado: {
       tipo: "elegivel",
+      efeito: "libera",
       motivo: "Você atende aos critérios: 6 meses ou mais e 500 corridas ou mais.",
       proximaAcao: "Vendedor liberado a montar pedido na concessionária escolhida.",
       regraAplicadaId: "r_ok",

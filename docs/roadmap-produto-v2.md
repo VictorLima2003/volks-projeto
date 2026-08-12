@@ -28,7 +28,7 @@ Hoje o motor tem a Uber **cravada no código**:
 | `Fatos.uber` | Namespace embutido, com `mesesUber`, `corridas`, `rating` |
 | `UberDriver` | Tipo de domínio, base mockada, `/api/uber-base` |
 | `FATOS_DISPONIVEIS` | Lista fixa de fatos "uber.*" oferecida nos seletores |
-| Seed | Campanha, perguntas e regras escritas para o caso Uber |
+| Seed | Pesquisas, perguntas e régua escritas para o caso Uber |
 
 Para o produto ser genérico, **tudo isso vira dado, não código**: os fatos disponíveis passam a
 ser os identificadores das perguntas mais os retornos dos hooks. A Uber vira apenas *um hook de
@@ -48,7 +48,7 @@ significa duas coisas diferentes no sistema:
 
 | "Aprovação" | O que é | Onde aparece |
 | --- | --- | --- |
-| Governança | Uma pessoa aprova a **versão da regra** antes de ir a produção | `/gestor/aprovacoes` |
+| Governança | Uma pessoa revisa a **versão da regra** antes de ir a produção | `/gestor/revisoes` |
 | Elegibilidade | O motor decide se o **respondente** passa | Resultado da jornada |
 
 São coisas sem relação, com o mesmo rótulo. Precisam de nomes distintos.
@@ -56,6 +56,10 @@ São coisas sem relação, com o mesmo rótulo. Precisam de nomes distintos.
 **Recomendação:** o resultado da pesquisa passa a ser um **desfecho nomeado pelo autor** (ele
 escreve o rótulo e escolhe o tipo visual), e o sistema só registra qual desfecho ocorreu. Governança
 passa a se chamar **publicação/revisão de versão**, nunca "aprovação".
+
+*Feito nos passos 4b e 4c.* O desfecho virou dado com `efeito` (`libera | segura | recusa`), e a
+governança virou **revisão**: fila em `/gestor/revisoes`, status `em_revisao`, ações **publicar** e
+**recusar**, papel `revisa`. A palavra "aprovação" não existe mais no código nem nas telas.
 
 ---
 
@@ -173,18 +177,59 @@ feito enquanto aqui o passo 4 inteiro seguia em aberto).
 O passo 4 foi quebrado em três porque as partes têm dependências diferentes: 4a era pré-requisito
 dos hooks, 4b destrava a tela de submissões, e 4c é renomeação sem efeito no motor.
 
+O 4a2 e o 4a4 não estavam previstos, e o segundo desfez parte do primeiro.
+
+O 4a2 tirou de dentro da oferta as coisas que eram do sistema: cada oferta carregava a própria
+cópia dos hooks, dos blocos e das versões de régua, e o efeito estava verificado na mão — editar o
+hook num lugar não chegava no outro, e o que ficou para trás seguia consultando o endereço antigo
+sem avisar ninguém.
+
+O 4a4 foi mais fundo: **"campanha" era só um tipo de pesquisa**, a que tem verba e vigência. Uma
+pesquisa de satisfação não tem nenhuma das duas, e manter duas entidades obrigava a criar dois
+cadastros para publicar uma pergunta. Hoje existe `Pesquisa`, com `reguaId` opcional (quem só
+coleta não decide) e `metadados` livres para o vocabulário do caso. Fonte e régua continuam na
+**Biblioteca**, porque essas são compartilhadas por natureza.
+
+O reuso do questionário morreu junto, de propósito: duas pesquisas parecidas se resolvem
+duplicando e ajustando o que difere — é mais barato do que manter sincronizado o que é comum.
+
+O 4a5 fechou o mesmo raciocínio nas regras. Elas chegaram a virar uma seção do sistema chamada
+"réguas" — nome inventado e lugar errado. Regra é condição sobre o que **esta** pesquisa coletou:
+editá-la longe das perguntas obrigava a ir e voltar para lembrar quais fatos existem, e o catálogo
+de fatos tinha que juntar os campos de todas as pesquisas, oferecendo condição sobre pergunta que
+aquela ali nunca faz. Hoje as versões moram em `Pesquisa.versoes`, e a aba **Regras** fica ao lado
+do Fluxo. O rito continua igual: proposta, duplo-check por outra pessoa, histórico. Só a
+`Biblioteca` sobrou no menu, com as fontes — que são endereço no mundo e servem a qualquer
+pesquisa.
+
+O que continua valendo dos dois: aprovar uma versão nova muda a decisão de quem está no ar — travar
+a pesquisa na versão do dia em que nasceu faria aprovar uma correção não corrigir nada. E o que já
+foi decidido não muda: cada sessão grava `ruleSetVersao`, e a auditoria continua sabendo qual
+critério valeu para cada pessoa. Verificado: aprovar a v2 no piloto do Rio não mexeu na decisão de
+São Paulo, que seguiu na v1.
+
 | # | Passo | Estado | Quando |
 | --- | --- | --- | --- |
 | 1 | Layout do construtor: largura total, abas, estados | feito | 05/08/2026 |
 | 2 | Condicionais genéricas + identificadores | feito | 05/08/2026 |
 | 3 | Hooks de código com Monaco | feito | 06/08/2026 |
 | 4a | Fatos dinâmicos — a Uber virou hook | feito | 07/08/2026 |
-| **4b** | **Desfechos nomeados pelo autor** (matar o `ResultadoTipo` fixo) | **próximo** | — |
-| 4c | Separar os dois sentidos de "aprovação" | pendente | — |
-| 5 | Submissões: ver 100% delas, com status técnico | pendente | — |
-| 6 | Exportação: CSV + API com credenciais | pendente | — |
+| 4a2 | Biblioteca: fonte e régua viraram coleções do sistema | feito | 10/08/2026 |
+| 4a3 | Construtor em fluxograma (React Flow) ao lado da lista | feito | 10/08/2026 |
+| 4a4 | Campanha deixou de existir: a pesquisa é a unidade | feito | 10/08/2026 |
+| 4a5 | Regras voltaram para dentro da pesquisa | feito | 10/08/2026 |
+| 4a6 | Capa configurável: fundo com prévia e cartão como sub-nó do fluxo | feito | 11/08/2026 |
+| 4a7 | Tela de fim: um modelo só, configurável pelo bloco do fluxo | feito | 11/08/2026 |
+| 4a8 | Publicar como ação: link para compartilhar e situação virando porta | feito | 11/08/2026 |
+| 4a9 | Rascunho separado do que está no ar, com publicar e descartar | feito | 11/08/2026 |
+| 4b.1 | Desfecho vira dado: texto sai do código, sistema passa a ler o `efeito` | feito | 11/08/2026 |
+| 4b.2 | Editor de desfechos: folha própria, com prévia e trava de remoção | feito | 11/08/2026 |
+| 4b.3 | Limpeza: `ResultadoTipo` saiu; sobrou `EfeitoDoDesfecho` | feito | 11/08/2026 |
+| 4c | Separar os dois sentidos de "aprovação": governança virou **revisão** | feito | 12/08/2026 |
+| 5 | Submissões: 100% delas, com estado técnico e a sessão nascendo no início | feito | 12/08/2026 |
+| 6 | Exportação: CSV do recorte + API por credencial da pesquisa | feito | 12/08/2026 |
 | 7 | Dashboard por pesquisa | fase posterior | — |
-| — | Visualização em fluxograma | fase 2 | — |
+| — | Fluxograma como grafo de verdade (caminhos que se juntam) | fase 2 | — |
 
 ### Duas ordens que não são negociáveis
 

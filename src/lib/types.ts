@@ -1,37 +1,194 @@
 // ============================================================================
 // Domínio: plataforma de pesquisas com decisão automatizada.
 // Nada aqui conhece um caso de negócio específico — o vocabulário do caso
-// vive em `seed.ts` e nos dados da campanha.
+// vive em `seed.ts` e nos dados de cada pesquisa.
 // ============================================================================
 
 export type UUID = string;
 
-// --- Campanha ---------------------------------------------------------------
-export type CampanhaStatus = "rascunho" | "ativa" | "pausada" | "encerrada";
+export type PesquisaStatus = "rascunho" | "ativa" | "pausada" | "encerrada";
 
-export interface Campanha {
+/**
+ * A pesquisa é a unidade do sistema: o questionário, quem responde a ele e o
+ * que se decide no fim.
+ *
+ * Ela já foi duas coisas — havia uma "campanha" que carregava a oferta e
+ * apontava para um questionário reutilizável. Não se sustentou: uma pesquisa de
+ * satisfação não tem verba nem vigência, e na prática ninguém compartilha
+ * questionário entre ofertas — duplica e ajusta o que difere, que é mais barato
+ * do que manter sincronizado o que é comum. Duas entidades viravam dois
+ * cadastros para criar uma coisa só.
+ *
+ * O vocabulário do caso de uso continua fora daqui: quais modelos a oferta tem,
+ * por exemplo, é uma pergunta da própria pesquisa, com as opções dela — não um
+ * campo deste tipo nem um texto paralelo.
+ */
+export interface Pesquisa {
   id: UUID;
   nome: string;
-  concessionaria: string;
-  /** Uma campanha pode ofertar vários modelos. */
-  modelos: string[];
-  cidadesAlvo: string[];
-  ufsAlvo: string[];
-  /** Faixas etárias elegíveis; vazio = sem restrição de idade. */
-  faixasEtarias: string[];
-  verbaTotal: number;
-  verbaConsumida: number;
-  vigenciaInicio: string;      // ISO
-  vigenciaFim: string;         // ISO
-  status: CampanhaStatus;
-  criadaEm: string;
-  /** A pesquisa é uma árvore de blocos, não uma lista plana. */
+  descricao?: string;
+  status: PesquisaStatus;
+  /**
+   * A árvore que está **no ar** — a que o respondente percorre.
+   *
+   * É uma árvore, não uma lista plana: o condicional carrega os ramos dentro
+   * de si.
+   */
   blocos: Bloco[];
-  /** Hooks de código disponíveis nesta campanha. */
-  hooks: Hook[];
-  ruleSets: RuleSet[];         // versionadas
-  ruleSetAtivoId: UUID;
+  /**
+   * A árvore em edição, quando ela difere da publicada.
+   *
+   * Ausente quer dizer "não há nada por publicar", e é o estado normal. Existe
+   * porque antes havia uma cópia só: salvar uma pergunta enquanto a pesquisa
+   * estava no ar trocava a pergunta de quem estava respondendo, com o mesmo
+   * clique que guarda um rascunho. Regra já tinha proposta separada do que
+   * vale; pergunta não tinha.
+   */
+  blocosRascunho?: Bloco[];
+  /**
+   * As regras que decidem o desfecho, guardadas por versão.
+   *
+   * Moram aqui porque regra é condição sobre o que a própria pesquisa coletou —
+   * separá-las numa coleção do sistema criava uma seção à parte para editar
+   * algo que só faz sentido ao lado das perguntas que alimentam a condição.
+   *
+   * Vazio é legítimo: pesquisa que só coleta — satisfação, cadastro — não
+   * decide nada, e exigir regra obrigaria a inventar um critério para jogar
+   * fora.
+   */
+  versoes: RuleSet[];
+  /** Qual versão vale hoje. Ausente quando nenhuma foi publicada ainda. */
+  versaoAtivaId?: UUID;
+  /**
+   * Credenciais de leitura desta pesquisa, para quem consome de fora.
+   *
+   * Moram na pesquisa, e não numa lista global, porque é assim que se entrega
+   * acesso na prática: a analista que vai plugar o Power BI naquela pesquisa
+   * recebe um token daquela pesquisa. Revogar um não derruba os outros.
+   */
+  tokens?: TokenApi[];
+  /**
+   * Os fins possíveis desta pesquisa.
+   *
+   * Ausente em pesquisa criada antes deste passo — quem lê cai em
+   * `DESFECHOS_PADRAO`, que são exatamente os cinco de sempre, com os mesmos
+   * ids. É o que faz as regras já gravadas continuarem apontando para algo.
+   */
+  desfechos?: Desfecho[];
+  /**
+   * O título que quem responde lê na tela de entrada.
+   *
+   * Existe como campo, e não como texto solto num saco de chaves livres, porque
+   * governa o que aparece na tela: enquanto era uma chave chamada "Chamada",
+   * bastava alguém escrever errado para o título virar o nome interno da
+   * pesquisa, sem aviso nenhum.
+   */
+  chamada?: string;
+
+  /**
+   * Como é a tela de entrada — a capa que quem responde vê antes da primeira
+   * pergunta.
+   *
+   * Opcional porque pesquisa antiga não tem: quem lê cai no padrão. Ver
+   * `APRESENTACAO_PADRAO`.
+   */
+  apresentacao?: Apresentacao;
+  criadaEm: string;
+  atualizadaEm: string;
 }
+
+/**
+ * Uma credencial de leitura externa.
+ *
+ * `valor` é o segredo em texto — protótipo, sem hash. Está registrado como
+ * limitação: num sistema de verdade guarda-se o hash e mostra-se o valor uma
+ * vez só, na criação.
+ */
+export interface TokenApi {
+  id: UUID;
+  /** Para quem/para quê — é o que permite revogar o certo depois. */
+  nome: string;
+  valor: string;
+  criadoEm: string;
+  criadoPor: string;
+  ultimoUsoEm?: string;
+}
+
+// --- A capa da pesquisa -----------------------------------------------------
+
+/**
+ * Teto do título da capa, em caracteres.
+ *
+ * Não é gosto: o título ocupa metade da dobra em corpo grande, e passando disso
+ * ele desce por cima do cartão de entrada ou encolhe a ponto de deixar de ser
+ * título. As duas chamadas do piloto têm 46 e 56 caracteres — o teto dá folga
+ * para uma frase inteira e barra o parágrafo disfarçado de manchete.
+ */
+export const LIMITE_DO_TITULO = 70;
+
+/**
+ * O fundo da capa, por nome — não por cor.
+ *
+ * É catálogo fechado de propósito. Campo livre de cor faria a primeira pesquisa
+ * roxa em cima do azul da marca, e a paleta aqui é travada: o gestor escolhe
+ * entre formas que já foram desenhadas, não pinta uma nova.
+ */
+export type FundoDaCapa = "persianas" | "gradiente" | "trama" | "liso" | "malha";
+
+/**
+ * O que o cartão da capa faz.
+ *
+ * `pergunta` colhe uma informação ali mesmo, antes de a jornada começar.
+ * `convite` só chama para começar, e tudo é perguntado lá dentro.
+ *
+ * A diferença não é estética: no `pergunta`, a resposta chega pronta e o campo
+ * correspondente já entra respondido; no `convite`, nada chega.
+ */
+export type EntradaDaCapa = "pergunta" | "convite";
+
+export interface Apresentacao {
+  fundo: FundoDaCapa;
+  entrada: EntradaDaCapa;
+  /**
+   * O que o cartão pergunta — quando pergunta.
+   *
+   * É uma `BlocoPergunta`, o mesmo tipo das perguntas do fluxo, e não uma
+   * estrutura própria. Foi de propósito: o cartão pedia CPF porque este caso
+   * pede CPF, mas a porta de entrada de uma pesquisa pode ser um e-mail, um
+   * telefone, um código de convite ou uma matrícula. Reusando o tipo, todos os
+   * formatos que o construtor já sabe editar valem aqui, e a resposta entra no
+   * mesmo espaço de fatos (`resposta.<identificador>`) sem nenhum caminho novo.
+   *
+   * Ela não faz parte da árvore de blocos: não tem ramo, não tem consulta, e o
+   * motor não a percorre — é o que a capa entrega já respondido.
+   */
+  pergunta?: BlocoPergunta;
+  /** Só no `convite`: o texto do botão. Vazio cai em "Começar". */
+  rotuloDoConvite?: string;
+}
+
+/**
+ * A pergunta que o cartão faz quando ninguém escolheu outra.
+ *
+ * CPF porque é o que a primeira pesquisa do sistema usava — não porque o
+ * produto saiba o que é um CPF. Trocar tipo e identificador é uma edição no
+ * painel do cartão.
+ */
+export const PERGUNTA_DA_CAPA_PADRAO: BlocoPergunta = {
+  id: "capa_pergunta",
+  bloco: "pergunta",
+  campo: "cpf",
+  rotulo: "Seu CPF",
+  tipo: "cpf",
+  obrigatoria: true,
+};
+
+/** O que existia antes de a capa ser configurável — e o que pesquisa velha usa. */
+export const APRESENTACAO_PADRAO: Apresentacao = {
+  fundo: "persianas",
+  entrada: "pergunta",
+  pergunta: PERGUNTA_DA_CAPA_PADRAO,
+};
 
 // --- Pesquisa: árvore de blocos ---------------------------------------------
 export type TipoPergunta =
@@ -109,6 +266,16 @@ export interface BlocoFeedback {
   imagemUrl?: string;
   /** Cor de destaque em hex; vazio usa a cor padrão do tipo. */
   cor?: string;
+  /**
+   * Os números trazidos pelas consultas, em cartões — como na tela de veredito.
+   *
+   * Quais números, o bloco não escolhe: são os fatos numéricos que os hooks
+   * trouxeram até aqui. Num fim de caminho que corta antes de qualquer consulta
+   * a lista sai vazia e a seção some sozinha.
+   */
+  mostrarNumeros?: boolean;
+  /** O quadro destacado do fim: o que a pessoa faz agora. */
+  proximoPasso?: { titulo: string; texto: string };
 }
 
 export type Bloco = BlocoPergunta | BlocoCondicional | BlocoConsulta | BlocoFeedback;
@@ -219,28 +386,156 @@ export interface Condicao {
   qualquer?: Condicao[];       // OR
 }
 
-export type ResultadoTipo =
-  | "elegivel"
-  | "nao_elegivel"
-  | "pendente_validacao"
-  | "revalidar"
-  | "erro";
+/**
+ * O que um desfecho faz **no sistema** — e não o que ele quer dizer para quem lê.
+ *
+ * É um enum pequeno e de propósito: o vendedor precisa saber se libera o pedido,
+ * o painel precisa contar quantas seguraram, a central precisa achar as que
+ * pararam. Nenhum deles precisa saber que o desfecho se chama "elegível".
+ *
+ * A divisão é essa: o **rótulo** é do caso de uso e o autor escreve; o **efeito**
+ * é do sistema e a lista é fechada. Enquanto os dois eram a mesma string, uma
+ * pesquisa de satisfação não podia ter desfecho nenhum sem herdar a esteira
+ * comercial junto.
+ */
+export type EfeitoDoDesfecho = "libera" | "segura" | "recusa";
+
+/**
+ * Um fim possível da pesquisa, nomeado por quem a montou.
+ *
+ * Mora dentro da `Pesquisa`, como as regras — é vocabulário do caso, não do
+ * produto. As regras apontam para o `id`; a tela final do respondente sai de
+ * `titulo`, `texto` e `proximoPasso`.
+ */
+export interface Desfecho {
+  id: string;
+  /** Como este fim se chama para quem trabalha na pesquisa. */
+  rotulo: string;
+  efeito: EfeitoDoDesfecho;
+  /** Selo e cor da tela final — a mesma escala do resto do sistema. */
+  tom: "go" | "stop" | "espera" | "neutro";
+  /**
+   * O título que quem responde lê. `{nome}` é trocado pelo primeiro nome, quando
+   * algum hook tiver trazido um — é o que fazia a saudação, antes chumbada.
+   */
+  titulo: string;
+  texto?: string;
+  proximoPasso?: { titulo: string; texto: string };
+}
+
+/**
+ * Os cinco desfechos com que toda pesquisa nasce.
+ *
+ * O texto é **exatamente** o que estava chumbado na jornada, inclusive as
+ * reticências e o `{identificador}` no lugar do CPF mascarado. Isso não é
+ * nostalgia: é o que permite este passo não mudar nenhuma tela. O que muda é de
+ * onde o texto vem — e, a partir do próximo passo, quem pode reescrevê-lo.
+ *
+ * `{nome}` e `{identificador}` são as duas únicas trocas: o primeiro nome
+ * trazido por algum hook, e o dado que a capa colheu. Sem hook que traga nome, a
+ * frase se resolve sem a saudação, como sempre se resolveu.
+ */
+export const DESFECHOS_PADRAO: Desfecho[] = [
+  {
+    id: "elegivel",
+    rotulo: "Elegível",
+    efeito: "libera",
+    tom: "go",
+    titulo: "{nome}você está elegível!",
+    texto:
+      "Suas condições especiais estão liberadas. Um vendedor da concessionária escolhida vai te procurar.",
+    proximoPasso: {
+      titulo: "Próximo passo",
+      texto:
+        "Leve seu CPF {identificador} à concessionária. O vendedor consulta e o pedido já sai liberado.",
+    },
+  },
+  {
+    id: "nao_elegivel",
+    rotulo: "Não elegível",
+    efeito: "recusa",
+    tom: "stop",
+    /* As reticências não são estilo: "ainda não é dessa vez." fecha o assunto,
+       com reticências deixa a porta aberta — que é o que a frase seguinte
+       promete. */
+    titulo: "{nome}ainda não é dessa vez...",
+    texto: "Você pode voltar assim que atingir os critérios. Nada se perde.",
+  },
+  {
+    id: "pendente_validacao",
+    rotulo: "Pendente de validação",
+    efeito: "segura",
+    tom: "espera",
+    /* "seu caso" é jargão de central de atendimento, e transforma quem responde
+       em processo. Aqui somos nós que fazemos alguma coisa. */
+    titulo: "{nome}vamos analisar seu pedido.",
+    texto: "Nossa central analisa manualmente e retorna pelo canal que você informou.",
+  },
+  {
+    id: "revalidar",
+    rotulo: "Revalidar",
+    efeito: "segura",
+    tom: "espera",
+    titulo: "{nome}precisamos confirmar seus dados.",
+    texto: "Encontramos uma divergência. A central vai entrar em contato para confirmar.",
+  },
+  {
+    id: "erro",
+    rotulo: "Erro",
+    efeito: "segura",
+    tom: "stop",
+    titulo: "{nome}não conseguimos decidir agora...",
+    texto: "Houve um problema na consulta. Sua solicitação foi encaminhada para análise.",
+  },
+];
+
+/** Os desfechos desta pesquisa — com o padrão para quem foi criada antes deles. */
+export function desfechosDa(pesquisa: { desfechos?: Desfecho[] }): Desfecho[] {
+  return pesquisa.desfechos?.length ? pesquisa.desfechos : DESFECHOS_PADRAO;
+}
+
+/**
+ * O desfecho de um id, com uma saída para o id que não existe mais.
+ *
+ * Regra apontando para desfecho apagado é possível — e a tela precisa mostrar
+ * alguma coisa em vez de quebrar. O que ela mostra é o próprio id, com efeito de
+ * `segura`: na dúvida, não libera nada.
+ */
+export function acharDesfecho(desfechos: Desfecho[] | undefined, id: string): Desfecho {
+  return (
+    desfechos?.find((d) => d.id === id) ?? {
+      id,
+      rotulo: id,
+      efeito: "segura",
+      tom: "neutro",
+      titulo: "Resultado indisponível",
+      texto: "Este desfecho não existe mais nesta pesquisa.",
+    }
+  );
+}
 
 export interface Regra {
   id: UUID;
   nome: string;
   condicao: Condicao;
-  resultado: ResultadoTipo;
+  /** O `id` do desfecho desta pesquisa — não mais um enum do produto. */
+  resultado: string;
   motivo: string;              // mensagem exibida (motorista/vendedor)
   proximaAcao?: string;        // orientação p/ vendedor/central
   prioridade: number;          // menor = maior prioridade
 }
 
 /**
- * Uma versão só entra em produção depois de aprovada por alguém diferente
+ * Uma versão só entra em produção depois de **revisada** por alguém diferente
  * de quem a propôs. `arquivado` é a versão que já valeu e foi substituída.
+ *
+ * O nome mudou de "aprovação" para "revisão" porque a palavra fazia dois
+ * trabalhos no sistema: aqui é governança — alguém confere a versão da regra
+ * antes de ela valer — e no fim da jornada era o veredito sobre a pessoa. Duas
+ * coisas sem relação com o mesmo rótulo, e a confusão aparecia na conversa.
+ * O veredito virou `Desfecho`, nomeado por quem monta; isto aqui é revisão.
  */
-export type RuleSetStatus = "em_aprovacao" | "ativo" | "rejeitado" | "arquivado";
+export type RuleSetStatus = "em_revisao" | "ativo" | "recusado" | "arquivado";
 
 export interface RuleSet {
   id: UUID;
@@ -254,11 +549,12 @@ export interface RuleSet {
   status: RuleSetStatus;
   propostoPor: string;
   propostaEm: string;
-  aprovadoPor?: string;
-  aprovadoEm?: string;
-  rejeitadoPor?: string;
-  rejeitadoEm?: string;
-  motivoRejeicao?: string;
+  /** Quem publicou a versão — nunca a mesma pessoa que propôs. */
+  publicadoPor?: string;
+  publicadoEm?: string;
+  recusadoPor?: string;
+  recusadoEm?: string;
+  motivoRecusa?: string;
 }
 
 // --- Respostas / Sessões ----------------------------------------------------
@@ -269,7 +565,7 @@ export type SessaoStatus =
 
 export interface SessaoMotorista {
   id: UUID;
-  campanhaId: UUID;
+  pesquisaId: UUID;
   cpf: string;
   iniciadaEm: string;
   atualizadaEm: string;
@@ -282,7 +578,16 @@ export interface SessaoMotorista {
 }
 
 export interface DecisaoResultado {
-  tipo: ResultadoTipo;
+  /** O `id` do desfecho que venceu. */
+  tipo: string;
+  /**
+   * O que este desfecho faz no sistema, gravado junto.
+   *
+   * Podia ser buscado na pesquisa a cada leitura, mas a sessão é histórico: se
+   * o autor mudar o efeito de um desfecho amanhã, a decisão de ontem continua
+   * valendo o que valia quando foi tomada.
+   */
+  efeito: EfeitoDoDesfecho;
   motivo: string;
   proximaAcao?: string;
   regraAplicadaId?: UUID;
@@ -301,7 +606,7 @@ export type PedidoStatus =
 
 export interface Pedido {
   id: UUID;
-  campanhaId: UUID;
+  pesquisaId: UUID;
   cpf: string;
   /**
    * Id do usuário que registrou, como em `propostoPor` do RuleSet. Guardar o

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { obterCampanha } from "@/lib/store";
+import { listarHooks } from "@/lib/store";
 import { executarHook } from "@/lib/hooks-runtime";
 import { Hook } from "@/lib/types";
 
@@ -13,19 +13,14 @@ export const dynamic = "force-dynamic";
  * sem isso, iterar no editor exigiria salvar a cada tentativa.
  */
 export async function POST(req: Request) {
-  const { campanhaId, hookId, argumentos, hookAvulso } = (await req.json()) as {
-    campanhaId: string;
+  const { hookId, argumentos, hookAvulso } = (await req.json()) as {
     hookId?: string;
     argumentos?: Record<string, unknown>;
     hookAvulso?: Hook;
   };
 
-  const campanha = obterCampanha(campanhaId);
-  if (!campanha) {
-    return NextResponse.json({ erro: "campanha_nao_encontrada" }, { status: 404 });
-  }
 
-  const hook = hookAvulso ?? (campanha.hooks ?? []).find((h) => h.id === hookId);
+  const hook = hookAvulso ?? listarHooks().find((h) => h.id === hookId);
   if (!hook) {
     return NextResponse.json({ erro: "hook_nao_encontrado" }, { status: 404 });
   }

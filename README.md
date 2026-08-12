@@ -10,7 +10,7 @@ Plataforma para **construir pesquisas com lógica condicional e decisão automat
 
 A Volkswagen quer vender com condição especial para motorista de aplicativo, e precisa decidir quem
 tem direito. A decisão depende de dados que estão **fora** da VW (base do parceiro, bureau de
-crédito) e de critérios que mudam por campanha, por região, por trimestre.
+crédito) e de critérios que mudam por praça, por trimestre, por oferta.
 
 O caminho comum é escrever um formulário e cravar os critérios no código. Aí toda mudança de regra
 vira demanda de desenvolvimento, e quem entende do negócio fica na fila.
@@ -59,14 +59,15 @@ depois, qual versão de qual regra decidiu cada caso — e com que dados.
 
 ### Onde o caso de uso mora
 
-Todo o vocabulário do caso Uber × VW está em **dados**: `seed.ts`, os hooks da campanha e os textos
-das telas. Nada disso está em tipos ou lógica.
+Todo o vocabulário do caso Uber × VW está em **dados**: `seed.ts`, os hooks, os metadados de cada
+pesquisa e os textos das telas. Nada disso está em tipos ou lógica.
 
 Se você for escrever "uber", "volkswagen" ou "elegível" dentro de `src/lib/`, provavelmente é o
 caminho errado — quase sempre o certo é um campo configurável.
 
-Exceção conhecida: `ResultadoTipo` ainda é um enum fixo (`elegivel | nao_elegivel | ...`). É dívida
-declarada, mapeada como próximo passo (4b). Não construa nada novo em cima dela.
+A única lista fechada que sobrou é o `EfeitoDoDesfecho` (`libera | segura | recusa`) — e ela é do
+sistema, não do negócio: é o que o vendedor e a central precisam saber para agir. O nome do
+desfecho é do autor.
 
 ---
 
@@ -149,7 +150,7 @@ return { nome: achado.nome, mesesUber: Number(achado.mesesUber) };
 
 No escopo do código: os parâmetros que você definiu, mais `csv()`, `log()`, `chave()` e `fetch`.
 
-Editado em `/gestor/campanhas/[id]/hooks` com Monaco (o editor do VS Code).
+Editado em `/gestor/fontes` com Monaco (o editor do VS Code).
 
 ---
 
@@ -161,22 +162,35 @@ Cada perfil tem sua área. **Não existe header global** — quem está numa ár
 | --- | --- | --- |
 | `/` | — | Escolha de área |
 | `/motorista` | Respondente | Entrada da jornada |
-| `/motorista/jornada?campanha=&cpf=` | Respondente | A pesquisa, passo a passo |
+| `/motorista/jornada?pesquisa=&cpf=` | Respondente | A pesquisa, passo a passo |
 | `/vendedor` | Vendedor | Carteira de pedidos |
 | `/vendedor/consulta?cpf=` | Vendedor | Situação, motivo, próxima ação |
-| `/gestor` | Gestor | Grid de campanhas |
-| `/gestor/campanhas/nova` | Gestor | Criação (modelos, UFs, faixas etárias) |
-| `/gestor/campanhas/[id]` | Gestor | Visão da campanha |
-| `/gestor/campanhas/[id]/pesquisa` | Gestor | **Construtor** — abas Definição e Simulação |
-| `/gestor/campanhas/[id]/hooks` | Gestor | **Editor de código** |
-| `/gestor/campanhas/[id]/regras` | Gestor | RuleSet ativo, histórico, diff |
-| `/gestor/campanhas/[id]/regras/editar` | Gestor | Edita e propõe nova versão |
-| `/gestor/aprovacoes` | Gestor | Fila de propostas e trilha |
+| `/gestor/pesquisas` | Gestor | Grid de pesquisas (a porta do gestor) |
+| `/gestor/pesquisas/nova` | Gestor | Criação (nome e descrição) |
+| `/gestor/pesquisas/[id]` | Gestor | **Construtor** — Fluxo, Definição, Regras, Simulação, Configuração |
+| `/gestor/pesquisas/[id]/regras-editar` | Gestor | Edita os critérios e propõe nova versão |
+| `/gestor/fontes` | Gestor | **Editor de código** das fontes |
+| `/gestor/revisoes` | Gestor | Fila de versões em revisão e trilha de decisões |
+| `/gestor/submissoes` | Gestor | Todas as submissões, com estado técnico, CSV e credenciais de API |
 | `/gestor/central` | Gestor | Exceções |
 | `/gestor/dashboard` | Gestor | Indicadores |
 
-APIs: `campanhas`, `pesquisa`, `hooks`, `executar-hook`, `rulesets`, `decidir`, `pedidos`,
-`lookup`, `identidade`, `reset`.
+APIs internas: `pesquisa`, `hooks`, `executar-hook`, `rulesets`, `decidir`, `pedidos`,
+`lookup`, `identidade`, `sessao`, `exportar`, `tokens`, `reset`.
+
+**API externa** — a única rota pensada para ser chamada de fora:
+
+```
+GET /api/publico/submissoes?pesquisa=<id>[&formato=csv]
+Authorization: Bearer <token da pesquisa>
+```
+
+Devolve as submissões da pesquisa com as mesmas colunas do CSV. Sem token válido, `401` — o mesmo
+`401` para pesquisa inexistente, de propósito: responder `404` ali deixaria qualquer um mapear
+quais pesquisas existem. As credenciais nascem e morrem em `/gestor/submissoes`, uma por destino.
+
+Duas limitações deste protótipo, ditas em voz alta porque valem uma decisão antes de ir a sério:
+o token é **comparado em texto** (não há hash) e **não existe limite de requisições**.
 
 ---
 
@@ -255,15 +269,16 @@ ver os dois lados.
 
 ```
 src/lib/
-  types.ts               Domínio inteiro: Bloco, Hook, Regra, Campanha, Sessao
+  types.ts               Domínio inteiro: Bloco, Hook, Regra, RuleSet, Pesquisa, Sessao
   engine.ts              Puro, sem I/O. Condições, decisão, percurso da árvore, catálogo de fatos
   hooks-runtime.ts       Executor dos hooks (server-only)
   store.ts               Estado em memória (singleton no globalThis)
-  seed.ts                Campanhas, hooks e RuleSet de exemplo
+  seed.ts                Pesquisas, hooks e regras de exemplo
   identidade.ts          Usuários e papéis (puro, cliente + servidor)
   identidade-server.ts   Leitura do cookie (server-only)
   validacao-pesquisa.ts  Validação da árvore + utilidades de manipulação
-  catalogo.ts            Modelos, UFs, faixas etárias, concessionárias
+  fluxo.ts               Árvore de blocos → grafo do construtor visual
+  catalogo.ts            Rótulos de status da esteira comercial
 
 src/components/
   ShellGestor / ShellFluxo   Cromo por área (gestor tem nav, fluxo não)
@@ -325,27 +340,35 @@ O código do hook executa no servidor via `AsyncFunction`. Dois problemas, com a
 A correção dos dois: worker isolado com limite de CPU (`isolated-vm`, ou `worker_threads` com
 `terminate()`).
 
-### O vocabulário ainda é do caso Uber×VW
+### O vocabulário do desfecho — resolvido
 
-O tipo `ResultadoTipo` é um enum fixo: `elegivel | nao_elegivel | pendente_validacao | revalidar |
-erro`. Isso é opinião do sistema sobre o negócio, e contraria o princípio de que o autor define a
-lógica. Está mapeado como próximo passo (4b).
+Era um enum fixo (`elegivel | nao_elegivel | ...`) com o texto das telas escrito em código. Hoje
+cada pesquisa tem seus `desfechos`, editáveis na folha **Desfechos** do construtor: nome, título,
+texto, quadro de próximo passo, cor e `efeito`. As pesquisas nascem com os cinco de sempre, com os
+mesmos ids — por isso as regras já gravadas continuaram valendo.
 
-### "Aprovação" significa duas coisas
+### "Aprovação" significava duas coisas — resolvido
 
-| "Aprovação" | O que é | Onde |
+A palavra fazia dois trabalhos sem relação: governança da versão de regra e veredito sobre quem
+responde. Hoje são duas palavras.
+
+| O que é | Como se chama | Onde |
 | --- | --- | --- |
-| Governança | Alguém aprova a **versão da regra** | `/gestor/aprovacoes` |
-| Elegibilidade | O motor decide se o **respondente** passa | Resultado da jornada |
+| Governança | **Revisão** de versão — publicar ou recusar | `/gestor/revisoes` |
+| Veredito | **Desfecho**, nomeado por quem monta a pesquisa | Fim da jornada |
 
-Sem relação entre si, mesmo rótulo. Foi apontado como confuso e está mapeado (4c).
+O desfecho carrega um `efeito` (`libera | segura | recusa`), e é ele — não o nome — que o vendedor,
+o painel e a central leem.
 
 ---
 
 ## Onde parou e o que vem
 
-Passos 1 a 4a estão feitos. O próximo é **4b — desfechos nomeados pelo autor**, que troca o enum
-fixo `ResultadoTipo` por um rótulo que o autor da pesquisa escreve.
+Os passos 1 a 6 estão fechados. O que resta do roadmap é o **7 — dashboard por pesquisa**, marcado
+como fase posterior, e o fluxograma como grafo de verdade, na fase 2.
+
+As restrições em aberto continuam as mesmas e estão descritas acima: hook sem isolamento real,
+store em memória, token de API guardado em texto e sem limite de requisições.
 
 A tabela de progresso, a ordem dos passos e o porquê de cada dependência vivem em
 [`docs/roadmap-produto-v2.md`](docs/roadmap-produto-v2.md), com os pedidos originais preservados —

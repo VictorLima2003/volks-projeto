@@ -193,3 +193,150 @@ h1, h2, h3 {
 .vw-rule {
   border-top: 3px solid #001E50;
 }
+
+/*
+ * Mapa de fluxo (React Flow).
+ *
+ * A biblioteca vem com paleta própria; aqui ela recebe a nossa. As variáveis
+ * existem porque as setas são desenhadas em SVG por dentro do componente, e a
+ * cor precisa entrar por `style` — classe do Tailwind não chega lá.
+ *
+ * Também apagamos o "attribution" só se for o caso: mantemos, porque a licença
+ * MIT pede a atribuição quando não há assinatura Pro, e tirar sem pagar seria
+ * quebrar o acordo com quem mantém a biblioteca.
+ */
+.fluxo-tela {
+  /* O mesmo cinza da mesa: o canvas continua a superfície em vez de recortar
+     uma janela dentro dela. */
+  background-color: #F6F5F2;
+  --fluxo-linha: #C3C8D0;   /* ink-400 */
+  --fluxo-sim: #0E7C3A;     /* signal-go */
+  --fluxo-nao: #606574;     /* ink-600 */
+  --fluxo-rotulo: #484E5F;  /* ink-700 */
+  --fluxo-fundo: #F6F5F2;   /* ink-100 — o próprio fundo do canvas */
+  --fluxo-ponto: #DFE4E8;   /* ink-300 */
+}
+
+/* As pontas de conexão não são interativas nesta tela: o desenho vem da árvore,
+   não do arrasto. Ficam discretas, como marcador de entrada e saída. */
+.fluxo-ponta {
+  width: 7px;
+  height: 7px;
+  background: #C3C8D0;
+  border: none;
+}
+
+.fluxo-tela .react-flow__controls-button {
+  background: #FFFFFF;
+  border-bottom: 1px solid var(--line);
+  fill: #484E5F;
+}
+.fluxo-tela .react-flow__controls-button:hover {
+  background: #F6F5F2;
+}
+.fluxo-tela .react-flow__attribution {
+  background: transparent;
+  font-size: 11px;
+}
+.fluxo-tela .react-flow__attribution a {
+  color: #9AA0AC;
+}
+
+/*
+ * Mesa de trabalho: fundo claro com trama de pontos.
+ *
+ * É o mesmo grafismo do canvas de fluxo (React Flow desenha os pontos por
+ * dentro), repetido aqui em CSS para a tela de criação — as duas são a mesma
+ * superfície de montagem, e um fundo chapado quebraria a continuidade entre
+ * "criar a pesquisa" e "montar o fluxo dela".
+ *
+ * `background-attachment: local` para a trama rolar junto com o conteúdo: fixa,
+ * ela desliza por baixo dos cartões e denuncia que é papel de parede.
+ */
+.mesa-pontos {
+  background-color: #F6F5F2;                 /* ink-100 */
+  background-image: radial-gradient(#DFE4E8 1px, transparent 1px);  /* ink-300 */
+  background-size: 14px 14px;
+  background-position: -1px -1px;
+}
+
+/*
+ * Escala de ferramenta.
+ *
+ * Dentro da prancheta tudo é menor que no resto do sistema: 13px de corpo,
+ * campos de 36px, rótulos de 11px. Os formulários reaproveitados ali (editor de
+ * bloco, editor de condição) nasceram para página, e replicar cada componente
+ * numa segunda versão "compacta" duplicaria a manutenção por uma diferença que
+ * é só de densidade.
+ *
+ * Por isso a redução mora aqui, num contêiner: quem entra na prancheta encolhe;
+ * o mesmo componente numa página segue no tamanho de leitura. `textarea` fica
+ * de fora da altura fixa — ela cresce com o conteúdo.
+ */
+.escala-ferramenta {
+  font-size: 13px;
+}
+.escala-ferramenta .text-base,
+.escala-ferramenta .text-lg {
+  font-size: 13px;
+  line-height: 1.45;
+}
+.escala-ferramenta .text-sm {
+  font-size: 12px;
+}
+.escala-ferramenta .text-xs {
+  font-size: 11px;
+}
+.escala-ferramenta input:not([type="checkbox"]):not([type="radio"]),
+.escala-ferramenta select {
+  height: 2.25rem;
+  font-size: 13px;
+}
+.escala-ferramenta textarea {
+  font-size: 13px;
+}
+.escala-ferramenta label {
+  font-size: 11px;
+}
+
+/*
+ * Popover da prancheta: cresce a partir do botão que o abriu.
+ *
+ * Deslocamento curto (6px) com um fio de escala: ele não viaja pela tela, brota
+ * onde o clique aconteceu. As curvas são as mesmas dos passos da jornada —
+ * saída mais rápida que a entrada, porque quem fecha já decidiu.
+ */
+@keyframes painel-entra {
+  from { opacity: 0; transform: translateY(-6px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes painel-sai {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(-6px) scale(0.985); }
+}
+
+@keyframes painel-entra-baixo {
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes painel-sai-baixo {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(6px) scale(0.985); }
+}
+
+/* O sentido acompanha o lado de onde o popover abriu: descendo do botão, ele
+   vem de cima; subindo, vem de baixo. Um popover que abre para cima animando
+   de cima para baixo parece cair, não abrir. */
+.painel-entra       { animation: painel-entra 180ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.painel-sai         { animation: painel-sai 130ms cubic-bezier(0.4, 0, 1, 1) both; }
+.painel-entra-baixo { animation: painel-entra-baixo 180ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.painel-sai-baixo   { animation: painel-sai-baixo 130ms cubic-bezier(0.4, 0, 1, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .painel-entra,
+  .painel-sai,
+  .painel-entra-baixo,
+  .painel-sai-baixo {
+    animation-duration: 1ms;
+  }
+}

@@ -21,8 +21,9 @@ Na prática:
 - O vocabulário do caso de uso mora em `seed.ts`, nos textos das telas, e nos dados — nunca em tipos
   ou lógica.
 
-Exceção conhecida e mapeada: `ResultadoTipo` ainda é um enum fixo (`elegivel | nao_elegivel | ...`).
-É dívida, está no roadmap como passo 4b. Não construa nada novo em cima dele.
+O desfecho da pesquisa é dado, não enum: cada pesquisa tem os seus, com nome e texto escritos por
+quem a monta. A única lista fechada é o `EfeitoDoDesfecho` (`libera | segura | recusa`), e ela é de
+sistema — o vendedor precisa saber se libera o pedido, não como aquele fim se chama.
 
 ## Idioma e estilo
 
@@ -86,7 +87,7 @@ Não "conserte" esse timeout com outro `setTimeout`. A cura é worker isolado co
 
 ### Pastas com `[id]` e o PowerShell
 
-`Remove-Item "src/app/gestor/campanhas/[id]/x"` **não funciona** — o PowerShell trata `[id]` como
+`Remove-Item "src/app/gestor/pesquisas/[id]/x"` **não funciona** — o PowerShell trata `[id]` como
 classe de caracteres e não casa nada, silenciosamente. Use `-LiteralPath`.
 
 ### Pastas com `_` são invisíveis para o Next
