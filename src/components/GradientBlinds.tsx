@@ -333,8 +333,25 @@ void main() {
       }
     };
 
-    resize();
-    const ro = new ResizeObserver(resize);
+    /*
+     * Pausado desenha **um** quadro, não nenhum.
+     *
+     * Antes o laço só chamava `render` quando não estava pausado, e quem tem
+     * "reduzir movimento" ligado no sistema ficava com o canvas vazio para
+     * sempre: a capa caía no azul de baixo e parecia outro fundo. Reduzir
+     * movimento é pedido de não animar, não de não pintar.
+     *
+     * O redesenho volta a ser necessário quando a caixa muda de tamanho — daí
+     * `resize` derrubar a marca.
+     */
+    let desenhado = false;
+    const medir = () => {
+      resize();
+      desenhado = false;
+    };
+
+    medir();
+    const ro = new ResizeObserver(medir);
     ro.observe(container);
 
     const onPointerMove = (e: PointerEvent) => {
@@ -352,11 +369,15 @@ void main() {
     // elemento nessa condição nunca recebe `pointermove`. Preso ao canvas, o
     // holofote ficava parado no centro. A conta já é feita contra o retângulo
     // do canvas, então ouvir mais longe não muda o resultado.
-    if (!spotlightFixed) window.addEventListener('pointermove', onPointerMove);
+    /* Pausado o holofote não segue o cursor: seguir é movimento, e é
+       exatamente disso que quem liga "reduzir movimento" está se protegendo. */
+    if (!spotlightFixed && !paused) window.addEventListener('pointermove', onPointerMove);
 
     const loop = (t: number) => {
       rafRef.current = requestAnimationFrame(loop);
-      uniforms.iTime.value = t * 0.001;
+      /* Congelado, e não em `t`: o quadro parado precisa ser sempre o mesmo,
+         senão a mesma tela abre com um desenho diferente a cada visita. */
+      uniforms.iTime.value = paused ? 0 : t * 0.001;
       if (mouseDampening > 0) {
         if (!lastTimeRef.current) lastTimeRef.current = t;
         const dt = (t - lastTimeRef.current) / 1000;
@@ -371,9 +392,10 @@ void main() {
       } else {
         lastTimeRef.current = t;
       }
-      if (!paused && programRef.current && meshRef.current) {
+      if ((!paused || !desenhado) && programRef.current && meshRef.current) {
         try {
           renderer.render({ scene: meshRef.current });
+          desenhado = true;
         } catch (e) {
           console.error(e);
         }
