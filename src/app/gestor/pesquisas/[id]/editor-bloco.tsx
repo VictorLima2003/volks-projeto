@@ -8,6 +8,7 @@ import {
   COR_FEEDBACK,
   ehCondicional,
   ehConsulta,
+  ehDestino,
   ehFeedback,
   Hook,
   Operador,
@@ -415,8 +416,11 @@ function CamposConsulta({
 
       <div>
         <Label>Hook a executar</Label>
+        {/* Só fontes: destino não é consultável no meio da jornada — ele leva
+            dado para fora quando ela acaba, e apontar um bloco de consulta para
+            ele daria um passo que não devolve fato nenhum. */}
         <Select value={bloco.hookId} onChange={(e) => trocarHook(e.target.value)}>
-          {hooks.map((h) => (
+          {hooks.filter((h) => !ehDestino(h)).map((h) => (
             <option key={h.id} value={h.id}>
               {h.nome} {h.ativo ? "" : "(inativo)"}
             </option>

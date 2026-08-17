@@ -266,6 +266,30 @@ function LinhaDaSubmissao({
         </span>
       </summary>
 
+      {/*
+       * As entregas aparecem antes das respostas, e em faixa própria.
+       *
+       * Entrega que falhou é o que alguém do outro lado descobre reclamando que
+       * o lead nunca chegou. Enterrada no meio dos dados coletados, a linha que
+       * conta isso seria lida depois do problema, e não antes.
+       */}
+      {(sessao.entregas?.length ?? 0) > 0 && (
+        <div className="px-5 pt-4 border-t hairline">
+          <h3 className="text-sm font-semibold text-ink-600 mb-3">Entregas</h3>
+          <div className="space-y-2">
+            {sessao.entregas!.map((e, i) => (
+              <div key={i} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
+                <Badge tone={e.ok ? "go" : "stop"}>{e.ok ? "entregue" : "falhou"}</Badge>
+                <span className="font-semibold">{e.destinoNome}</span>
+                <span className="text-ink-600">{e.em.slice(0, 16).replace("T", " ")}</span>
+                <span className="text-ink-600">{e.duracaoMs}ms</span>
+                {e.erro && <span className="text-signal-stop">{e.erro}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="px-5 pb-5 pt-1 border-t hairline grid md:grid-cols-2 gap-6">
         <div>
           <h3 className="text-sm font-semibold text-ink-600 mb-3">Respostas</h3>

@@ -175,6 +175,32 @@ No escopo do código: os parâmetros que você definiu, mais `csv()`, `log()`, `
 
 Editado em `/gestor/fontes` com Monaco (o editor do VS Code).
 
+### Destino: o mesmo mecanismo ao contrário
+
+Uma **fonte** traz dado para dentro no meio da jornada. Um **destino** leva a jornada terminada para
+fora: o CRM, uma planilha, um webhook. Mesma máquina — editor, execução, anexos, registro de erro.
+
+```js
+if (resultado.efeito !== 'libera') return { enviado: false };
+await fetch('https://crm.exemplo/leads', {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ documento: respondente.identificador, modelo: fatos.resposta.modelo }),
+});
+return { enviado: true };
+```
+
+Todo destino recebe quatro variáveis, sempre com estes nomes: `fatos`, `resultado`, `pesquisa` e
+`respondente`. Ele dispara quando a jornada fecha **e** quando a Central libera ou recusa um caso na
+mão — senão o lead que passou pela conferência humana seria justamente o que nunca chega ao CRM.
+
+O nome do CRM não está em lugar nenhum do código. Quem integra escreve o `fetch` no formato que o
+destino dele pede, pela mesma razão que o motor não conhece "uber": cravar um fornecedor aqui
+quebraria a próxima integração.
+
+Cada tentativa fica registrada na submissão, com duração e erro. Entrega que falha é o tipo de coisa
+que só se descobre quando alguém reclama que o lead nunca chegou.
+
 Uma **pesquisa** também viaja por arquivo: **Exportar**, no popover do nome dentro do construtor,
 baixa o que está na tela — capa, blocos, desfechos e os critérios que decidem. **Importar pesquisa**,
 na lista, cria sempre uma **nova** em rascunho, nunca sobrescreve, e avisa quando o arquivo cita

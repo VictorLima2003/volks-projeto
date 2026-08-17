@@ -3,6 +3,7 @@ import {
   DESFECHOS_PADRAO,
   desfechosDa,
   DecisaoResultado,
+  EntregaDeDestino,
   Hook,
   Pedido,
   Pesquisa,
@@ -16,7 +17,7 @@ import {
   PESQUISAS_SEED,
   SESSOES_SEED,
 } from "./seed";
-import { decidir, montarFatos } from "./engine";
+import { decidir, montarFatos, preencherTexto, primeiroNomeDosFatos } from "./engine";
 
 // --------------------------------------------------------------------------
 // Store singleton em memória (reset a cada restart do server)
@@ -272,16 +273,33 @@ export function tratarSessao(
     {
       canal: contato ? "e-mail" : "sem canal",
       destino: contato?.[1] as string | undefined,
+      /* O título do desfecho é escrito com `{nome}` dentro, para a tela do
+         respondente preencher. Copiado cru para o aviso, o marcador ia junto e
+         a mensagem chegaria com "{nome}" no meio da frase. */
       texto:
         desfecho.efeito === "libera"
-          ? `Sua análise foi concluída: ${desfecho.titulo}`
-          : `Sua análise foi concluída e não seguimos com o pedido. ${escolha.motivo}`,
+          ? preencherTexto(desfecho.titulo, {
+              nome: primeiroNomeDosFatos(montarFatos(sessao.respostas, sessao.externos ?? {})),
+              identificador: sessao.cpf,
+            })
+          : `Analisamos seu caso e não seguimos com o pedido. ${escolha.motivo}`,
       registradoEm: agora,
     },
   ];
 
   sessao.atualizadaEm = agora;
   return sessao;
+}
+
+export function obterSessao(id: UUID): SessaoMotorista | undefined {
+  return state().sessoes.find((s) => s.id === id);
+}
+
+/** Anota o que um destino fez com esta jornada. Ver `EntregaDeDestino`. */
+export function registrarEntrega(sessaoId: UUID, entrega: EntregaDeDestino) {
+  const sessao = state().sessoes.find((x) => x.id === sessaoId);
+  if (!sessao) return;
+  sessao.entregas = [...(sessao.entregas ?? []), entrega];
 }
 
 // --------------------------------------------------------------------------

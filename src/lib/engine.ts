@@ -755,6 +755,27 @@ function explicarCond(c: Condicao): string {
  * você está elegível!" ou "Você está elegível!". Sem hook que traga nome, a
  * frase se resolve com maiúscula, como sempre se resolveu.
  */
+/**
+ * O primeiro nome do respondente, se alguma fonte devolveu um.
+ *
+ * Procura por **qualquer** caminho que termine em "nome" — `uber.nome`,
+ * `parceiro.nome`, `resposta.nome`. É a única forma de o motor saber tratar
+ * alguém pelo nome sem conhecer o prefixo de ninguém: quem cravasse `uber.nome`
+ * aqui teria a saudação sumindo no dia em que a fonte trocasse de nome.
+ */
+export function primeiroNomeDosFatos(fatos: Record<string, unknown>): string | null {
+  const achatar = (obj: Record<string, unknown>, prefixo = ""): [string, unknown][] =>
+    Object.entries(obj).flatMap(([k, v]) =>
+      v && typeof v === "object" && !Array.isArray(v)
+        ? achatar(v as Record<string, unknown>, `${prefixo}${k}.`)
+        : [[`${prefixo}${k}`, v] as [string, unknown]],
+    );
+
+  const achado = achatar(fatos).find(([k]) => k.split(".").pop()?.toLowerCase() === "nome");
+  const inteiro = typeof achado?.[1] === "string" ? achado[1].trim() : "";
+  return inteiro ? inteiro.split(/\s+/)[0] : null;
+}
+
 export function preencherTexto(
   texto: string,
   trocas: { nome?: string | null; identificador?: string },

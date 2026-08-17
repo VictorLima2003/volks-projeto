@@ -1,5 +1,6 @@
 import { areaDe } from "@/lib/identidade";
 import { exigirUsuario } from "@/lib/identidade-server";
+import { despacharDestinos } from "@/lib/destinos";
 import { obterPesquisa, tratarSessao } from "@/lib/store";
 import { desfechosDa } from "@/lib/types";
 import { NextResponse } from "next/server";
@@ -57,6 +58,11 @@ export async function POST(req: Request) {
       { status: 409 },
     );
   }
+
+  /* O lead liberado na mão precisa chegar ao mesmo lugar que o liberado pelo
+     motor. Sem isto, o caso que passou pela conferência humana seria justamente
+     o que nunca aparece no CRM. */
+  await despacharDestinos(tratada);
 
   const pesquisa = obterPesquisa(tratada.pesquisaId);
   const desfecho = desfechosDa(pesquisa ?? {}).find((d) => d.id === desfechoId);

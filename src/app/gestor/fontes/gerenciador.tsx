@@ -4,7 +4,8 @@ import { useAviso } from "@/components/Avisos";
 import { EditorCodigo } from "@/components/EditorCodigo";
 import { Badge, Button, Card, Input, Label, Select, Textarea } from "@/components/ui";
 import { baixarTexto, fonteDeArquivo, fonteParaArquivo } from "@/lib/portabilidade";
-import { AnexoHook, Hook, ParametroHook } from "@/lib/types";
+import { CODIGO_INICIAL_DESTINO, PARAMETROS_DO_DESTINO } from "@/lib/destinos-catalogo";
+import { AnexoHook, ehDestino, Hook, ParametroHook, TipoDeHook } from "@/lib/types";
 import { useRef, useState } from "react";
 
 const CODIGO_INICIAL = [
@@ -35,21 +36,31 @@ export function GerenciadorHooks({
 
   const hook = hooks.find((h) => h.id === selecionado) ?? null;
 
+  /* Duas famílias na mesma tela, separadas por título. São a mesma máquina —
+     editor, execução, anexos — e o que muda é o sentido: uma traz dado, a outra
+     leva. Misturadas na lista, escolher a errada era questão de tempo. */
+  const fontes = hooks.filter((h) => !ehDestino(h));
+  const destinos = hooks.filter(ehDestino);
+
   function patch(id: string, p: Partial<Hook>) {
     setHooks((hs) => hs.map((h) => (h.id === id ? { ...h, ...p } : h)));
   }
 
-  function adicionar() {
+  function adicionar(tipo: TipoDeHook = "fonte") {
     const id = `hook_${Date.now().toString(36)}`;
+    const destino = tipo === "destino";
     const novo: Hook = {
       id,
-      nome: "Novo hook",
+      tipo,
+      nome: destino ? "Novo destino" : "Novo hook",
       descricao: "",
-      prefixo: `hook${hooks.length + 1}`,
-      parametros: [{ nome: "documento", rotulo: "Documento" }],
-      mensagemCarregando: "Consultando...",
+      /* O destino não devolve fato para ninguém, mas o prefixo é obrigatório no
+         tipo e serve de identificador na tela. */
+      prefixo: destino ? `destino${destinos.length + 1}` : `hook${fontes.length + 1}`,
+      parametros: destino ? PARAMETROS_DO_DESTINO : [{ nome: "documento", rotulo: "Documento" }],
+      mensagemCarregando: destino ? "" : "Consultando...",
       rotulos: {},
-      codigo: CODIGO_INICIAL,
+      codigo: destino ? CODIGO_INICIAL_DESTINO : CODIGO_INICIAL,
       anexos: [],
       ativo: false,
     };
@@ -113,37 +124,33 @@ export function GerenciadorHooks({
     <div className="grid lg:grid-cols-4 gap-6 items-start">
       {/* ---------------- Lista ---------------- */}
       <aside className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Hooks</h2>
-          <span className="text-sm text-ink-600">{hooks.length}</span>
-        </div>
-
-        <ul className="space-y-2">
-          {hooks.map((h) => (
-            <li key={h.id}>
-              <button
-                type="button"
-                onClick={() => setSelecionado(h.id)}
-                className={
-                  "w-full text-left border rounded-md px-4 py-3 transition " +
-                  (h.id === selecionado
-                    ? "border-vw-deep bg-vw-deep/[0.06]"
-                    : "border-ink-300 hover:border-ink-500 bg-ink-0")
-                }
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-base truncate flex-1">{h.nome}</span>
-                  {!h.ativo && <Badge tone="warn">off</Badge>}
-                </div>
-                <span className="mono text-xs text-ink-600">{h.prefixo}.*</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-
-        <Button variant="secondary" onClick={adicionar} className="w-full h-11 text-sm">
-          + Novo hook
+        <Familia
+          titulo="Fontes"
+          vazio="Nenhuma fonte ainda."
+          itens={fontes}
+          selecionado={selecionado}
+          onEscolher={setSelecionado}
+        />
+        <Button variant="secondary" onClick={() => adicionar("fonte")} className="w-full h-11 text-sm">
+          + Nova fonte
         </Button>
+
+        <div className="pt-4">
+          <Familia
+            titulo="Destinos"
+            vazio="Nenhum destino ainda. É por aqui que o lead sai para o CRM."
+            itens={destinos}
+            selecionado={selecionado}
+            onEscolher={setSelecionado}
+          />
+          <Button
+            variant="secondary"
+            onClick={() => adicionar("destino")}
+            className="w-full h-11 text-sm mt-3"
+          >
+            + Novo destino
+          </Button>
+        </div>
 
         {/* O input de arquivo fica escondido e é o botão que o aciona: o
             controle nativo não aceita o desenho do sistema e ainda escreve
@@ -215,6 +222,8 @@ function EdicaoHook({
   onPatch: (p: Partial<Hook>) => void;
   onRemover: () => void;
 }) {
+  const destino = ehDestino(hook);
+
   return (
     <div className="space-y-5">
       <Card>
@@ -224,14 +233,18 @@ function EdicaoHook({
               <Label>Nome</Label>
               <Input value={hook.nome} onChange={(e) => onPatch({ nome: e.target.value })} />
             </div>
-            <div>
-              <Label>Prefixo dos fatos</Label>
-              <Input
-                value={hook.prefixo}
-                onChange={(e) => onPatch({ prefixo: e.target.value })}
-                className="mono"
-              />
-            </div>
+            {/* O prefixo nomeia os fatos que a fonte devolve. Um destino não
+                devolve fato para ninguém, então o campo não teria o que nomear. */}
+            {!destino && (
+              <div>
+                <Label>Prefixo dos fatos</Label>
+                <Input
+                  value={hook.prefixo}
+                  onChange={(e) => onPatch({ prefixo: e.target.value })}
+                  className="mono"
+                />
+              </div>
+            )}
           </div>
           <div className="mt-7 flex shrink-0 items-center gap-2">
             {/* Exportar mora junto do hook, e não numa barra da tela: o que se
@@ -280,32 +293,56 @@ function EdicaoHook({
           </div>
         </div>
 
-        <div className="mt-4">
-          <Label>Mensagem de carregamento</Label>
-          <Input
-            value={hook.mensagemCarregando}
-            onChange={(e) => onPatch({ mensagemCarregando: e.target.value })}
-            placeholder="Consultando..."
-          />
-          <p className="text-xs text-ink-600 mt-2">
-            É o que o respondente vê enquanto o hook executa.
+        {/* Ninguém está esperando na tela quando um destino roda: a jornada já
+            acabou e o resultado já apareceu. */}
+        {!destino && (
+          <div className="mt-4">
+            <Label>Mensagem de carregamento</Label>
+            <Input
+              value={hook.mensagemCarregando}
+              onChange={(e) => onPatch({ mensagemCarregando: e.target.value })}
+              placeholder="Consultando..."
+            />
+            <p className="text-xs text-ink-600 mt-2">
+              É o que o respondente vê enquanto o hook executa.
+            </p>
+          </div>
+        )}
+      </Card>
+
+      {destino ? (
+        <Card>
+          <Label className="mb-3">O que o código recebe</Label>
+          <ul className="space-y-2">
+            {PARAMETROS_DO_DESTINO.map((p) => (
+              <li key={p.nome} className="flex flex-wrap items-baseline gap-x-3 text-sm">
+                <span className="font-semibold">{p.nome}</span>
+                <span className="text-ink-600">{p.descricao}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-ink-600 mt-4 leading-snug">
+            Estas quatro chegam sempre, com estes nomes. Não são editáveis porque quem escreve o
+            destino não escolhe o que a jornada tem para entregar.
           </p>
-        </div>
-      </Card>
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <Parametros
+              parametros={hook.parametros}
+              onChange={(parametros) => onPatch({ parametros })}
+            />
+          </Card>
 
-      <Card>
-        <Parametros
-          parametros={hook.parametros}
-          onChange={(parametros) => onPatch({ parametros })}
-        />
-      </Card>
-
-      <Card>
-        <RotulosDeFatos
-          rotulos={hook.rotulos ?? {}}
-          onChange={(rotulos) => onPatch({ rotulos })}
-        />
-      </Card>
+          <Card>
+            <RotulosDeFatos
+              rotulos={hook.rotulos ?? {}}
+              onChange={(rotulos) => onPatch({ rotulos })}
+            />
+          </Card>
+        </>
+      )}
 
       {/*
        * Anexos acima do código, e não depois dele.
@@ -334,9 +371,15 @@ function EdicaoHook({
         />
       </Card>
 
-      <Card>
-        <ExecutarTeste hook={hook} />
-      </Card>
+      {/* O teste avulso monta um formulário com os parâmetros da fonte e os
+          preenche com texto. Os quatro de um destino são objetos montados a
+          partir de uma jornada inteira, e não há como digitá-los aqui: o teste
+          de um destino é rodar uma jornada de verdade e olhar a entrega. */}
+      {!destino && (
+        <Card>
+          <ExecutarTeste hook={hook} />
+        </Card>
+      )}
 
       <div className="border-l-4 border-signal-warn pl-5 py-1">
         <div className="text-sm font-semibold text-signal-warn mb-2">
@@ -667,5 +710,64 @@ function RotulosDeFatos({
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * Uma das duas listas da lateral.
+ *
+ * O rótulo abaixo do nome muda com a família: a fonte se identifica pelo
+ * prefixo dos fatos que devolve, e o destino não devolve fato nenhum — dizer
+ * "destino1.*" ali seria prometer um caminho que nenhuma condição pode ler.
+ */
+function Familia({
+  titulo,
+  vazio,
+  itens,
+  selecionado,
+  onEscolher,
+}: {
+  titulo: string;
+  vazio: string;
+  itens: Hook[];
+  selecionado: string | null;
+  onEscolher: (id: string) => void;
+}) {
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold">{titulo}</h2>
+        <span className="text-sm text-ink-600">{itens.length}</span>
+      </div>
+
+      {itens.length === 0 ? (
+        <p className="text-sm text-ink-600 my-3 leading-snug">{vazio}</p>
+      ) : (
+        <ul className="space-y-2 my-3">
+          {itens.map((h) => (
+            <li key={h.id}>
+              <button
+                type="button"
+                onClick={() => onEscolher(h.id)}
+                className={
+                  "w-full text-left border rounded-md px-4 py-3 transition " +
+                  (h.id === selecionado
+                    ? "border-vw-deep bg-vw-deep/[0.06]"
+                    : "border-ink-300 hover:border-ink-500 bg-ink-0")
+                }
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-base truncate flex-1">{h.nome}</span>
+                  {!h.ativo && <Badge tone="warn">off</Badge>}
+                </div>
+                <span className="text-xs text-ink-600">
+                  {ehDestino(h) ? "roda no fim da jornada" : `${h.prefixo}.*`}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }

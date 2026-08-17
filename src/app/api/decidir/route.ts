@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { despacharDestinos } from "@/lib/destinos";
 import {
   abrirSessao,
   atualizarResposta,
   finalizarSessao,
   obterOuIniciarSessao,
+  obterSessao,
   registrarExternos,
 } from "@/lib/store";
 
@@ -31,5 +33,11 @@ export async function POST(req: Request) {
   if (!decisao) {
     return NextResponse.json({ erro: "falha_decisao" }, { status: 500 });
   }
+
+  /* Depois de a decisão estar gravada, e não antes: destino que falha não pode
+     impedir a pessoa de ver o próprio resultado. */
+  const encerrada = obterSessao(sessao.id);
+  if (encerrada) await despacharDestinos(encerrada);
+
   return NextResponse.json({ sessaoId: sessao.id, decisao });
 }

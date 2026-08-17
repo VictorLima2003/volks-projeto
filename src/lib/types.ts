@@ -325,9 +325,22 @@ export interface AnexoHook {
  * O que ele retorna vira fato sob o `prefixo`, disponível nas condicionais
  * e nas regras.
  */
+/**
+ * Para onde o código olha: fonte traz dado de fora, destino leva dado para fora.
+ *
+ * É a mesma máquina nos dois sentidos — editor, execução, anexos, registro de
+ * erro. O que muda é quando roda e o que recebe: a fonte roda no meio da jornada
+ * e devolve fatos; o destino roda quando a jornada fecha e recebe o que foi
+ * decidido.
+ *
+ * Opcional porque hook gravado antes disto não tem o campo, e ele é fonte.
+ */
+export type TipoDeHook = "fonte" | "destino";
+
 export interface Hook {
   id: UUID;
   nome: string;
+  tipo?: TipoDeHook;
   descricao?: string;
   /** Prefixo dos fatos retornados: "credito" → credito.score, credito.limite. */
   prefixo: string;
@@ -577,6 +590,8 @@ export interface SessaoMotorista {
   ruleSetVersao?: number;
   /** Preenchido quando uma pessoa decidiu no lugar do motor. Ver `TratamentoManual`. */
   tratamento?: TratamentoManual;
+  /** O que os destinos fizeram com esta jornada. Ver `EntregaDeDestino`. */
+  entregas?: EntregaDeDestino[];
   /** O que já foi avisado ao respondente sobre esta jornada. */
   avisos?: AvisoAoRespondente[];
 }
@@ -662,4 +677,26 @@ export interface Pedido {
   criadoEm: string;
   status: PedidoStatus;
   motivo?: string;
+}
+
+/** Se este hook leva dado para fora em vez de trazer. */
+export function ehDestino(h: Hook): boolean {
+  return h.tipo === "destino";
+}
+
+/**
+ * O que aconteceu quando o sistema tentou entregar esta jornada lá fora.
+ *
+ * Guardado na sessão, e não só no log do servidor. Entrega que falhou é o tipo
+ * de coisa que só se descobre quando alguém do outro lado reclama que o lead
+ * nunca chegou — e aí é tarde para saber se foi o CRM que recusou ou o código
+ * que quebrou. Aqui fica escrito, por jornada.
+ */
+export interface EntregaDeDestino {
+  destinoId: UUID;
+  destinoNome: string;
+  ok: boolean;
+  erro?: string;
+  duracaoMs: number;
+  em: string;
 }
