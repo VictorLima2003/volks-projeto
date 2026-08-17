@@ -91,6 +91,29 @@ curl -X POST http://localhost:3000/api/reset
 
 ---
 
+## Publicar
+
+A imagem de produção sai do `Dockerfile` da raiz — três estágios, `output: standalone`, ~3,4 MB de
+aplicação sobre o `node:22-alpine`, rodando como usuário sem privilégio.
+
+```bash
+docker build -t volkswagen . && docker run -p 3000:3000 volkswagen
+```
+
+No EasyPanel: serviço **App**, origem no repositório, método de build **Dockerfile**, porta **3000**.
+Nenhuma variável de ambiente é necessária — não há banco nem chave.
+
+**O que precisa ser dito antes de mostrar para alguém:** o store é em memória. Todo deploy,
+reinício ou queda do contêiner devolve os dados ao seed. Pesquisa criada some, submissão respondida
+some, credencial de API some. Isso é adequado para demonstração e não é adequado para piloto com
+gente real respondendo — o próximo passo, quando for a hora, é trocar o store por um banco.
+
+E o de sempre: o editor de fontes **executa JavaScript no servidor sem isolamento**. Num endereço
+público, quem entrar na área do gestor executa código na sua VPS. Como não há senha, "quem entrar"
+é qualquer um que saiba um e-mail da lista. Enquanto for demonstração, mantenha o endereço restrito.
+
+---
+
 ## Os três conceitos
 
 Entender estes três resolve 90% do código.
