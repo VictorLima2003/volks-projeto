@@ -53,8 +53,6 @@ type DadosNo = {
   no: NoFluxo;
   temErro: boolean;
   selecionado: boolean;
-  /** Só em condicional: de que lado o dagre pôs o ramo "então". */
-  entaoNaEsquerda?: boolean;
 };
 
 /** Layout de cima para baixo. Dagre resolve a ordem dos ramos sem cruzar setas. */
@@ -82,6 +80,84 @@ function posicionar(nos: NoFluxo[], arestas: { de: string; para: string }[]) {
       return [n.id, { x: x - width / 2, y: y - height / 2 }];
     }),
   );
+}
+
+/**
+ * Põe o "então" à esquerda e o "senão" à direita, sem desfazer o dagre.
+ *
+ * A pergunta que uma condicional faz tem uma ordem na cabeça de quem lê: *tal
+ * coisa? sim, então isto; senão, aquilo*. Quando o desenho invertia os lados, a
+ * leitura pedia uma conferência na etiqueta a cada bifurcação, e é justamente
+ * essa conferência que um fluxograma existe para poupar.
+ *
+ * Antes o lado era descoberto do layout e o handle é que seguia. Funcionava
+ * contra cruzamento de linha, mas deixava o lado ao acaso do dagre.
+ *
+ * Aqui o dagre continua decidindo a ordem — ele é bom nisso, e reordenar à mão
+ * traria de volta as linhas cruzadas. O que se faz depois é **espelhar** o par
+ * de ramos quando vier trocado. Espelhar é reflexão: preserva a quantidade de
+ * cruzamentos lá dentro e preserva a caixa que os dois ocupam, então nada
+ * escorrega para cima do que está em volta.
+ *
+ * Só o que é **exclusivo** de cada ramo se move. Os ramos voltam a se encontrar
+ * — o bloco depois do `se` é alcançável pelos dois — e mover o ponto de
+ * encontro arrastaria com ele o resto da pesquisa.
+ *
+ * As condicionais são tratadas de cima para baixo porque espelhar um par também
+ * espelha as condicionais aninhadas nele; processando o pai primeiro, o filho é
+ * conferido já na posição final.
+ */
+function porEntaoAEsquerda(
+  posicoes: Map<string, { x: number; y: number }>,
+  arestas: { de: string; para: string; ramo?: "entao" | "senao" }[],
+  condicionais: string[],
+) {
+  const saidas = new Map<string, string[]>();
+  for (const a of arestas) saidas.set(a.de, [...(saidas.get(a.de) ?? []), a.para]);
+
+  const alcance = (raiz: string) => {
+    const vistos = new Set<string>();
+    const fila = [raiz];
+    while (fila.length) {
+      const id = fila.shift()!;
+      if (vistos.has(id)) continue;
+      vistos.add(id);
+      for (const p of saidas.get(id) ?? []) fila.push(p);
+    }
+    return vistos;
+  };
+
+  const largura = (id: string) => (id.startsWith("ramo:") ? CONVITE_L : LARGURA);
+  const daEsquerda = (ids: Set<string>) =>
+    Math.min(...[...ids].map((id) => posicoes.get(id)?.x ?? 0));
+
+  const emOrdemDeLeitura = [...condicionais].sort(
+    (a, b) => (posicoes.get(a)?.y ?? 0) - (posicoes.get(b)?.y ?? 0),
+  );
+
+  for (const id of emOrdemDeLeitura) {
+    const entrada = (ramo: "entao" | "senao") =>
+      arestas.find((a) => a.de === id && a.ramo === ramo)?.para;
+    const eE = entrada("entao");
+    const eS = entrada("senao");
+    if (!eE || !eS) continue;
+
+    const deE = alcance(eE);
+    const deS = alcance(eS);
+    const soE = new Set([...deE].filter((n) => !deS.has(n)));
+    const soS = new Set([...deS].filter((n) => !deE.has(n)));
+    if (!soE.size || !soS.size) continue;
+
+    if (daEsquerda(soE) <= daEsquerda(soS)) continue;
+
+    const juntos = [...soE, ...soS];
+    const inicio = Math.min(...juntos.map((n) => posicoes.get(n)!.x));
+    const fim = Math.max(...juntos.map((n) => posicoes.get(n)!.x + largura(n)));
+    for (const n of juntos) {
+      const p = posicoes.get(n)!;
+      posicoes.set(n, { x: inicio + fim - (p.x + largura(n)), y: p.y });
+    }
+  }
 }
 
 /** O nó fantasma não existe na árvore: é a ponta onde o próximo bloco entra. */
@@ -215,26 +291,11 @@ export function MapaFluxo({
       ],
       arestasFinais,
     );
-    /*
-     * De que lado cada ramo caiu.
-     *
-     * O handle do "então" estava fixo em 30% e o do "senão" em 70%, mas quem
-     * decide a ordem horizontal é o dagre — e quando ele punha o "senão" à
-     * esquerda, as duas linhas se cruzavam logo abaixo do `se`. Fluxograma com
-     * linha cruzada é o tipo de erro que ninguém consegue não ver.
-     *
-     * Em vez de forçar a posição do dagre (que reordenaria a subárvore inteira),
-     * o handle é que segue o desenho.
-     */
-    const ladoDoEntao = new Map<string, boolean>();
-    for (const no of grafo.nos) {
-      if (!ehCondicional(no.bloco)) continue;
-      const x = (ramo: "entao" | "senao") => {
-        const saida = arestasFinais.find((a) => a.de === no.id && a.ramo === ramo);
-        return saida ? (posicoes.get(saida.para)?.x ?? 0) : 0;
-      };
-      ladoDoEntao.set(no.id, x("entao") <= x("senao"));
-    }
+    porEntaoAEsquerda(
+      posicoes,
+      arestasFinais,
+      grafo.nos.filter((n) => ehCondicional(n.bloco)).map((n) => n.id),
+    );
 
     const nodes: Node<DadosNo>[] = grafo.nos.map((no) => ({
       id: no.id,
@@ -244,7 +305,6 @@ export function MapaFluxo({
         no,
         temErro: problemas.some((p) => p.blocoId === no.id && p.gravidade === "erro"),
         selecionado: selecionado === no.id,
-        entaoNaEsquerda: ladoDoEntao.get(no.id) ?? true,
       },
       draggable: false,
     }));
@@ -420,7 +480,7 @@ export function MapaFluxo({
 
 /** O nó do canvas. Mesma linguagem da lista: filete, selo, título e resumo. */
 function NoBloco({ data }: NodeProps) {
-  const { no, temErro, selecionado, entaoNaEsquerda = true } = data as unknown as DadosNo;
+  const { no, temErro, selecionado } = data as unknown as DadosNo;
   const b = no.bloco;
   const titulo = (ehFeedback(b) ? b.titulo : b.rotulo) || "(sem título)";
 
@@ -453,14 +513,14 @@ function NoBloco({ data }: NodeProps) {
             type="source"
             id="entao"
             position={Position.Bottom}
-            style={{ left: entaoNaEsquerda ? "30%" : "70%" }}
+            style={{ left: "30%" }}
             className="fluxo-ponta"
           />
           <Handle
             type="source"
             id="senao"
             position={Position.Bottom}
-            style={{ left: entaoNaEsquerda ? "70%" : "30%" }}
+            style={{ left: "70%" }}
             className="fluxo-ponta"
           />
         </>
