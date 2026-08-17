@@ -3,8 +3,9 @@
 import { useAviso } from "@/components/Avisos";
 import { EditorCodigo } from "@/components/EditorCodigo";
 import { Badge, Button, Card, Input, Label, Select, Textarea } from "@/components/ui";
+import { baixarTexto, fonteDeArquivo, fonteParaArquivo } from "@/lib/portabilidade";
 import { AnexoHook, Hook, ParametroHook } from "@/lib/types";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 const CODIGO_INICIAL = [
   "// Este código é o corpo de uma função assíncrona.",
@@ -29,6 +30,7 @@ export function GerenciadorHooks({
   const [hooks, setHooks] = useState<Hook[]>(hooksIniciais);
   const [selecionado, setSelecionado] = useState<string | null>(hooksIniciais[0]?.id ?? null);
   const [salvando, setSalvando] = useState(false);
+  const arquivoRef = useRef<HTMLInputElement>(null);
   const { avisar } = useAviso();
 
   const hook = hooks.find((h) => h.id === selecionado) ?? null;
@@ -53,6 +55,42 @@ export function GerenciadorHooks({
     };
     setHooks((hs) => [...hs, novo]);
     setSelecionado(id);
+  }
+
+  /**
+   * Importar não salva — só põe na mesa.
+   *
+   * Quem recebe uma fonte de fora precisa ler o código antes de ele existir
+   * para valer; salvar direto pularia essa leitura. A fonte entra selecionada e
+   * desligada, e o "Salvar hooks" continua sendo o ato deliberado de sempre.
+   *
+   * As travas de prefixo — inválido, reservado, repetido — não são refeitas
+   * aqui: elas moram na API e é lá que valem. O que a tela faz é adiantar o
+   * aviso do repetido, porque o servidor recusaria o lote inteiro e a pessoa
+   * ficaria sem saber qual dos hooks derrubou o salvamento.
+   */
+  function importar(arquivo: File) {
+    const leitor = new FileReader();
+    leitor.onload = () => {
+      const lido = fonteDeArquivo(String(leitor.result));
+      if (!lido.ok) {
+        avisar(lido.erro, "stop");
+        return;
+      }
+      const id = `hook_${Date.now().toString(36)}`;
+      setHooks((hs) => [...hs, { ...lido.valor, id }]);
+      setSelecionado(id);
+
+      const conflito = hooks.some((h) => h.prefixo === lido.valor.prefixo);
+      avisar(
+        conflito
+          ? `"${lido.valor.nome}" entrou, mas o prefixo "${lido.valor.prefixo}" já é de outro hook. Troque antes de salvar.`
+          : `"${lido.valor.nome}" entrou desligada. Confira o código e salve.`,
+        conflito ? "stop" : "go",
+      );
+    };
+    leitor.onerror = () => avisar("Não deu para ler o arquivo.", "stop");
+    leitor.readAsText(arquivo);
   }
 
   async function salvar() {
@@ -105,6 +143,31 @@ export function GerenciadorHooks({
 
         <Button variant="secondary" onClick={adicionar} className="w-full h-11 text-sm">
           + Novo hook
+        </Button>
+
+        {/* O input de arquivo fica escondido e é o botão que o aciona: o
+            controle nativo não aceita o desenho do sistema e ainda escreve
+            "Nenhum arquivo selecionado" ao lado, que aqui não informa nada. */}
+        <input
+          ref={arquivoRef}
+          type="file"
+          accept="application/json,.json"
+          className="sr-only"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) importar(f);
+            /* Zerar o valor faz o mesmo arquivo poder ser escolhido de novo —
+               sem isso, reimportar depois de corrigir não dispara `change`. */
+            e.target.value = "";
+          }}
+        />
+        <Button
+          variant="secondary"
+          onClick={() => arquivoRef.current?.click()}
+          disabled={!podeEditar}
+          className="w-full h-11 text-sm"
+        >
+          Importar JSON
         </Button>
 
         <div className="pt-4 border-t hairline space-y-3">
@@ -170,14 +233,30 @@ function EdicaoHook({
               />
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onRemover}
-            className="w-11 h-11 mt-7 shrink-0 rounded-full hover:bg-signal-stop/10 text-signal-stop transition"
-            aria-label="Remover hook"
-          >
-            ✕
-          </button>
+          <div className="mt-7 flex shrink-0 items-center gap-2">
+            {/* Exportar mora junto do hook, e não numa barra da tela: o que se
+                leva embora é esta fonte, e um botão longe dela obrigaria a
+                conferir qual estava selecionada antes de clicar. */}
+            <button
+              type="button"
+              onClick={() =>
+                baixarTexto(`fonte-${hook.prefixo || "sem-prefixo"}.json`, fonteParaArquivo(hook))
+              }
+              className="inline-flex h-11 items-center rounded-full border hairline px-4
+                         text-sm font-semibold text-ink-800 transition
+                         hover:border-vw-deep hover:text-vw-deep"
+            >
+              Exportar
+            </button>
+            <button
+              type="button"
+              onClick={onRemover}
+              className="w-11 h-11 shrink-0 rounded-full hover:bg-signal-stop/10 text-signal-stop transition"
+              aria-label="Remover hook"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-3 gap-4">

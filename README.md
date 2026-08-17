@@ -152,6 +152,11 @@ No escopo do código: os parâmetros que você definiu, mais `csv()`, `log()`, `
 
 Editado em `/gestor/fontes` com Monaco (o editor do VS Code).
 
+Uma fonte sai e entra por arquivo: **Exportar** baixa `fonte-<prefixo>.json` com código,
+parâmetros, rótulos e anexos; **Importar JSON** põe o arquivo na tela, desligado, para ser lido
+antes de valer. O arquivo se identifica em `formato`, então trocar pesquisa por fonte é recusado
+com uma frase e não com erro de campo faltando.
+
 ---
 
 ## Áreas e rotas
