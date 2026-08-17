@@ -1,12 +1,18 @@
 import { AjudaDaTela, ItemAjuda } from "@/components/AjudaDaTela";
 import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, Stat, Table, TD, TH, THead, TR } from "@/components/ui";
+import { exigirUsuarioNaTela } from "@/lib/identidade-server";
 import { listarSessoes, listarPesquisas } from "@/lib/store";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 export default function Central() {
+  /* A Central estava fora do menu e por isso ficou fora da conferência de área
+     quando o login entrou: sem ela, um vendedor que digitasse o endereço abria a
+     fila de exceções. */
+  exigirUsuarioNaTela("gestor");
+
   const sessoes = listarSessoes();
   const pesquisas = listarPesquisas();
   const nomeDaPesquisa = (id: string) => pesquisas.find((p) => p.id === id)?.nome ?? id;

@@ -28,11 +28,11 @@ const ITENS = [
   { href: "/gestor/pesquisas", label: "Pesquisas" },
   { href: "/gestor/submissoes", label: "Submissões" },
   /*
-   * Revisões e Central seguem fora da navegação a pedido — as rotas, as APIs
-   * e as travas continuam de pé. Para trazer de volta, basta descomentar.
+   * A Central volta para a navegação porque é a etapa de conferência humana que
+   * o desafio pede: a validação é automática, e o que sai com alerta para numa
+   * fila para alguém olhar. Escondida, essa fila existia e ninguém a via.
    */
-  // { href: "/gestor/revisoes", label: "Revisões" },
-  // { href: "/gestor/central", label: "Central" },
+  { href: "/gestor/central", label: "Central" },
   { href: "/gestor/fontes", label: "Fontes" },
 ];
 
