@@ -178,21 +178,32 @@ export default function Pesquisas() {
                * primário leva ao construtor e a leitura vai numa pílula
                * menor, ao lado.
                *
-               * A pílula menor é escrita à mão em vez de `LinkButton` com
+               * Os dois são escritos à mão em vez de `LinkButton` com
                * `className`: o `cn` daqui é concatenação simples, então
                * `h-12` e `h-9` na mesma string deixam a altura por conta da
                * ordem da folha gerada, e não do que se pediu.
+               *
+               * Mesma altura, e o que distingue é o preenchimento: numa lista de
+               * linhas repetidas, dois tamanhos diferentes por linha viram
+               * degrau visual a cada item, e o olho passa a ler o degrau em vez
+               * do nome da pesquisa.
                */}
               <div className="ml-auto flex shrink-0 items-center gap-3">
                 <Link
                   href={`/gestor/pesquisas/${p.id}/indicadores`}
                   className="inline-flex h-9 items-center rounded-full border hairline px-4
-                             text-sm font-semibold text-ink-800 transition
+                             text-sm text-ink-800 transition
                              hover:border-vw-deep hover:text-vw-deep"
                 >
                   Indicadores
                 </Link>
-                <LinkButton href={`/gestor/pesquisas/${p.id}`}>Construtor</LinkButton>
+                <Link
+                  href={`/gestor/pesquisas/${p.id}`}
+                  className="inline-flex h-9 items-center rounded-full bg-vw-deep px-4
+                             text-sm text-ink-0 transition hover:bg-ink-800"
+                >
+                  Construtor
+                </Link>
               </div>
             </div>
           );
