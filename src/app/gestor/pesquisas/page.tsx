@@ -85,89 +85,98 @@ export default function Pesquisas() {
         </Card>
       )}
 
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {pesquisas.map((p) => {
+      {/*
+       * Lista, e não grade de cartões.
+       *
+       * Os cartões empilhavam nome, descrição, dois números e quatro links cada,
+       * e três deles lado a lado já não cabiam sem cortar texto. O que se faz
+       * aqui é comparar pesquisas — quantas perguntas, quantas respostas — e
+       * comparar pede coluna alinhada, não caixas soltas: com os números na
+       * mesma vertical, a leitura de cima a baixo é imediata.
+       */}
+      <div className="border hairline rounded-md overflow-hidden">
+        {pesquisas.map((p, i) => {
           const contagem = contarBlocos(p.blocos);
           const rs = versaoQueDecide(p.versoes, p.versaoAtivaId);
-          const minhas = sessoes.filter((s) => s.pesquisaId === p.id);
-          const elegiveis = minhas.filter((s) => s.resultado?.efeito === "libera").length;
+          const respostas = sessoes.filter((s) => s.pesquisaId === p.id).length;
 
           return (
-            <Card key={p.id} className="flex flex-col">
-              <div className="flex items-start justify-between gap-3">
-                <Link
-                  href={`/gestor/pesquisas/${p.id}`}
-                  className="text-lg font-semibold tracking-tight hover:text-vw-deep transition"
-                >
-                  {p.nome}
-                </Link>
-                <div className="flex items-center gap-1.5 shrink-0">
+            <div
+              key={p.id}
+              className={`flex flex-wrap items-center gap-x-6 gap-y-4 px-5 py-4 ${
+                i > 0 ? "border-t hairline" : ""
+              }`}
+            >
+              <div className="min-w-56 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/gestor/pesquisas/${p.id}`}
+                    className="text-base font-semibold tracking-tight hover:text-vw-deep transition"
+                  >
+                    {p.nome}
+                  </Link>
                   {/* Editada e ainda não publicada: quem olha a lista precisa
                       saber que o que está no ar não é o que está montado. */}
                   {p.blocosRascunho && p.status === "ativa" && (
                     <Badge tone="warn">alterações não publicadas</Badge>
                   )}
-                  <Badge tone={p.status === "ativa" ? "go" : p.status === "encerrada" ? "stop" : "neutral"}>
+                  <Badge
+                    tone={p.status === "ativa" ? "go" : p.status === "encerrada" ? "stop" : "neutral"}
+                  >
                     {p.status}
                   </Badge>
                 </div>
-              </div>
-
-              {p.descricao && <p className="mt-2 text-sm text-ink-700 line-clamp-2">{p.descricao}</p>}
-
-              <dl className="mt-5 text-sm divide-y divide-ink-200">
-                <div className="py-2 first:pt-0 flex justify-between gap-6">
-                  <dt className="text-ink-600">Perguntas</dt>
-                  <dd>{contagem.perguntas}</dd>
-                </div>
-                <div className="py-2 last:pb-0 flex justify-between gap-6">
-                  <dt className="text-ink-600">Respostas</dt>
-                  <dd>
-                    {/* Leva ao recorte desta pesquisa: o número aqui é resumo, e
-                        quem clica quer ver quem respondeu. */}
-                    <Link
-                      href={`/gestor/submissoes?pesquisa=${p.id}`}
-                      className="underline decoration-ink-300 hover:decoration-vw-deep hover:text-vw-deep transition"
-                    >
-                      {minhas.length}
-                    </Link>
-                    {rs && <span className="text-ink-600"> · {elegiveis} liberadas</span>}
-                  </dd>
-                </div>
-              </dl>
-
-              <div className="mt-auto pt-5 border-t hairline flex flex-wrap items-center gap-x-4 gap-y-2">
-                <Link
-                  href={`/gestor/pesquisas/${p.id}`}
-                  className="text-sm text-ink-700 hover:text-vw-deep underline decoration-ink-300 hover:decoration-vw-deep transition"
-                >
-                  Construtor
-                </Link>
-                {rs ? (
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
                   <Link
                     href={`/gestor/pesquisas/${p.id}`}
                     className="text-sm text-ink-700 hover:text-vw-deep underline decoration-ink-300 hover:decoration-vw-deep transition"
                   >
-                    Regras v{rs.versao}
+                    Construtor
                   </Link>
-                ) : (
-                  <span className="text-sm text-ink-600">Sem regras · só coleta</span>
-                )}
-                {/* O link que se compartilha com quem responde. Fora do ar ele
-                    leva `previa=1`, senão esta linha da lista mandaria o próprio
-                    time para a tela de "não está no ar". */}
+                  {!rs && <span className="text-sm text-ink-600">Sem regras · só coleta</span>}
+                  {/* O link que se compartilha com quem responde. Fora do ar ele
+                      leva `previa=1`, senão esta linha da lista mandaria o próprio
+                      time para a tela de "não está no ar". */}
+                  <Link
+                    href={
+                      p.status === "ativa"
+                        ? `/motorista?pesquisa=${p.id}`
+                        : `/motorista?pesquisa=${p.id}&previa=1`
+                    }
+                    className="text-sm text-ink-700 hover:text-vw-deep underline decoration-ink-300 hover:decoration-vw-deep transition"
+                  >
+                    {p.status === "ativa" ? "Abrir jornada" : "Ver prévia"}
+                  </Link>
+                </div>
+              </div>
+
+              {/* Rótulo em cima do número, e não ao lado: assim a coluna
+                  continua legível quando a linha quebra no celular. */}
+              <div className="w-24 shrink-0">
+                <div className="text-xs text-ink-600">Perguntas</div>
+                <div className="text-lg font-semibold tabular-nums">{contagem.perguntas}</div>
+              </div>
+
+              <div className="w-24 shrink-0">
+                <div className="text-xs text-ink-600">Respostas</div>
+                {/* O número leva ao recorte desta pesquisa: quem clica num total
+                    quer ver do que ele é feito. */}
                 <Link
-                  href={
-                    p.status === "ativa"
-                      ? `/motorista?pesquisa=${p.id}`
-                      : `/motorista?pesquisa=${p.id}&previa=1`
-                  }
-                  className="ml-auto text-sm text-ink-700 hover:text-vw-deep underline decoration-ink-300 hover:decoration-vw-deep transition"
+                  href={`/gestor/submissoes?pesquisa=${p.id}`}
+                  className="text-lg font-semibold tabular-nums underline decoration-ink-300 hover:text-vw-deep hover:decoration-vw-deep transition"
                 >
-                  {p.status === "ativa" ? "Abrir jornada" : "Ver prévia"}
+                  {respostas}
                 </Link>
               </div>
-            </Card>
+
+              <LinkButton
+                href={`/gestor/pesquisas/${p.id}/indicadores`}
+                variant="secondary"
+                className="ml-auto shrink-0"
+              >
+                Indicadores
+              </LinkButton>
+            </div>
           );
         })}
       </div>
