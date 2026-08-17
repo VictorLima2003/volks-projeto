@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { aplicarRecorte, recorteDeParams } from "@/lib/analise";
 import { linhasDeSubmissao, paraCsv } from "@/lib/exportacao";
 import { podePropor } from "@/lib/identidade";
 import { exigirUsuario } from "@/lib/identidade-server";
@@ -11,6 +12,12 @@ export const dynamic = "force-dynamic";
  *
  * Os filtros vêm na URL justamente para isto: o que se vê é o que se baixa. Um
  * botão que exportasse sempre tudo obrigaria a filtrar de novo na planilha.
+ *
+ * O recorte é lido por `recorteDeParams` e aplicado por `aplicarRecorte` — as
+ * mesmas funções que a tela usa. Enquanto esta rota tinha a própria filtragem,
+ * ela conhecia três parâmetros enquanto a tela oferecia oito: quem baixasse
+ * depois de escolher um período ou uma busca levava a base inteira achando que
+ * levava o recorte. Duplicar a regra é garantir que as duas divirjam.
  */
 export async function GET(req: Request) {
   const sessao = exigirUsuario();
@@ -20,19 +27,11 @@ export async function GET(req: Request) {
   }
 
   const { searchParams } = new URL(req.url);
-  const pesquisaId = searchParams.get("pesquisa");
-  const estado = searchParams.get("estado");
-  const falha = searchParams.get("falha") === "1";
+  const recorte = recorteDeParams(Object.fromEntries(searchParams.entries()));
 
-  const sessoes = listarSessoes().filter((s) => {
-    if (pesquisaId && s.pesquisaId !== pesquisaId) return false;
-    if (estado && s.status !== estado) return false;
-    if (falha && !Object.values(s.externos ?? {}).some((f) => f?.erro === true)) return false;
-    return true;
-  });
-
+  const sessoes = aplicarRecorte(listarSessoes(), recorte);
   const { colunas, linhas } = linhasDeSubmissao(sessoes, listarPesquisas());
-  const nome = `submissoes${pesquisaId ? `-${pesquisaId}` : ""}.csv`;
+  const nome = `submissoes${recorte.pesquisaId ? `-${recorte.pesquisaId}` : ""}.csv`;
 
   return new NextResponse(paraCsv(colunas, linhas), {
     headers: {

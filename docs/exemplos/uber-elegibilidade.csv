@@ -1,0 +1,11 @@
+documento,nome,cidade,uf,mesesUber,corridas,status,rating,categoria,ultimaCorrida,veiculoProprio
+11122233344,Marcos Andrade,Sao Paulo,SP,14,2380,ativo,4.92,diamante,2026-08-12,sim
+22233344455,Juliana Ribeiro,Sao Paulo,SP,9,1120,ativo,4.87,ouro,2026-08-10,sim
+33344455566,Rafael Nogueira,Rio de Janeiro,RJ,22,5400,ativo,4.95,diamante,2026-08-14,sim
+44455566677,Carla Mendes,Belo Horizonte,MG,4,320,ativo,4.71,prata,2026-08-09,nao
+55566677788,Diego Cardoso,Curitiba,PR,7,480,ativo,4.66,prata,2026-08-11,sim
+77788899900,Bruno Tavares,Salvador,BA,11,900,suspenso,4.42,ouro,2026-07-20,sim
+12123234345,Rodrigo Pinto,Sao Paulo,SP,15,1780,inativo,4.60,ouro,2026-06-01,sim
+88899900011,Larissa Souza,Recife,PE,6,510,ativo,4.80,ouro,2026-08-13,sim
+00011122233,Fernanda Alves,Brasilia,DF,3,220,ativo,4.55,bronze,2026-08-07,nao
+23234345456,Aline Batista,Campinas,SP,8,640,ativo,4.75,ouro,2026-08-15,sim
