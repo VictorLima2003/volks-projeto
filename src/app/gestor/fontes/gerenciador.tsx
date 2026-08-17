@@ -307,6 +307,18 @@ function EdicaoHook({
         />
       </Card>
 
+      {/*
+       * Anexos acima do código, e não depois dele.
+       *
+       * O código lê o anexo pelo nome — `csv('parceiros.csv')` —, então o nome
+       * do arquivo é entrada para quem vai escrever, e não resultado do que
+       * escreveu. Embaixo, era preciso rolar o editor inteiro para conferir como
+       * o arquivo se chama e voltar para digitar.
+       */}
+      <Card>
+        <Anexos anexos={hook.anexos} onChange={(anexos) => onPatch({ anexos })} />
+      </Card>
+
       <Card>
         <div className="flex items-baseline justify-between mb-4">
           <Label className="mb-0">Código</Label>
@@ -320,10 +332,6 @@ function EdicaoHook({
           onChange={(codigo) => onPatch({ codigo })}
           parametros={hook.parametros.map((p) => p.nome)}
         />
-      </Card>
-
-      <Card>
-        <Anexos anexos={hook.anexos} onChange={(anexos) => onPatch({ anexos })} />
       </Card>
 
       <Card>
