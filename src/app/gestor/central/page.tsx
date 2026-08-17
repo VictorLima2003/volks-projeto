@@ -2,8 +2,10 @@ import { AjudaDaTela, ItemAjuda } from "@/components/AjudaDaTela";
 import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, Stat, Table, TD, TH, THead, TR } from "@/components/ui";
 import { exigirUsuarioNaTela } from "@/lib/identidade-server";
+import { nomeDeUsuario } from "@/lib/identidade";
 import { listarSessoes, listarPesquisas } from "@/lib/store";
-import Link from "next/link";
+import { acharDesfecho, desfechosDa } from "@/lib/types";
+import { TratarCaso } from "./tratar";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,19 @@ export default function Central() {
   const sessoes = listarSessoes();
   const pesquisas = listarPesquisas();
   const nomeDaPesquisa = (id: string) => pesquisas.find((p) => p.id === id)?.nome ?? id;
+
+  const desfechosDe = (pesquisaId: string) => {
+    const pesquisa = pesquisas.find((p) => p.id === pesquisaId);
+    return desfechosDa(pesquisa ?? {})
+      .filter((d) => d.efeito !== "segura")
+      .map((d) => ({ id: d.id, rotulo: d.rotulo, efeito: d.efeito as "libera" | "recusa" }));
+  };
+
+  /* Tratadas hoje: o que saiu da fila pela mão de alguém. Sem esta lista, tratar
+     um caso o fazia sumir da tela, e não havia como conferir o que se decidiu. */
+  const tratadas = sessoes
+    .filter((s) => s.tratamento)
+    .sort((a, b) => (b.tratamento?.em ?? "").localeCompare(a.tratamento?.em ?? ""));
 
   const excecoes = sessoes.filter(
     /* A central cuida do que ficou parado — qualquer desfecho que segure, tenha
@@ -90,14 +105,67 @@ export default function Central() {
                 <TD className="text-xs text-ink-700 max-w-xs">{s.resultado?.proximaAcao ?? "-"}</TD>
                 <TD className="mono text-xs text-ink-600">{s.atualizadaEm.slice(0, 16).replace("T", " ")}</TD>
                 <TD>
-                  <Link href={`/vendedor/consulta?cpf=${encodeURIComponent(s.cpf)}`} className="text-xs underline text-ink-700 hover:text-ink-900">
-                    abrir
-                  </Link>
+                  <TratarCaso sessaoId={s.id} opcoes={desfechosDe(s.pesquisaId)} />
                 </TD>
               </TR>
             ))}
           </tbody>
         </Table>
+      )}
+
+      {tratadas.length > 0 && (
+        <>
+          <h2 className="text-xl font-semibold tracking-tight mt-12 mb-4">Tratadas</h2>
+          <Table>
+            <THead>
+              <tr>
+                <TH>CPF</TH>
+                <TH>Virou</TH>
+                <TH>Motivo</TH>
+                <TH>Quem decidiu</TH>
+                <TH>Aviso</TH>
+              </tr>
+            </THead>
+            <tbody>
+              {tratadas.map((s) => {
+                const quem = nomeDeUsuario(s.tratamento!.por);
+                const aviso = s.avisos?.at(-1);
+                return (
+                  <TR key={s.id}>
+                    <TD className="mono text-xs">{s.cpf}</TD>
+                    <TD>
+                      <Badge tone={s.resultado?.efeito === "libera" ? "go" : "stop"}>
+                        {acharDesfecho(
+                          desfechosDa(pesquisas.find((p) => p.id === s.pesquisaId) ?? {}),
+                          s.resultado?.tipo ?? "",
+                        ).rotulo}
+                      </Badge>
+                    </TD>
+                    <TD className="text-xs text-ink-700 max-w-xs">{s.tratamento!.motivo}</TD>
+                    <TD className="text-xs text-ink-700">
+                      {quem.nome}
+                      <div className="text-ink-600">
+                        {s.tratamento!.em.slice(0, 16).replace("T", " ")}
+                      </div>
+                    </TD>
+                    {/* O aviso diz a verdade sobre si mesmo: registrado, não
+                        enviado. Não há serviço de envio neste protótipo, e uma
+                        tela dizendo "enviado" seria mentira em cima do gestor. */}
+                    <TD className="text-xs text-ink-700">
+                      {aviso?.destino ? (
+                        <>
+                          registrado para <span className="text-ink-900">{aviso.destino}</span>
+                        </>
+                      ) : (
+                        <span className="text-ink-600">sem contato na jornada</span>
+                      )}
+                    </TD>
+                  </TR>
+                );
+              })}
+            </tbody>
+          </Table>
+        </>
       )}
 
       <h2 className="text-xl font-semibold tracking-tight mt-12 mb-4">Jornadas em aberto</h2>

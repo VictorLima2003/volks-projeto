@@ -214,6 +214,76 @@ export function finalizarSessao(sessaoId: UUID): DecisaoResultado | null {
   return decisao;
 }
 
+/**
+ * A conferência humana de um caso que o motor segurou.
+ *
+ * Devolve `null` quando não há o que tratar: sessão inexistente, desfecho que
+ * não é daquela pesquisa, ou caso que o motor não segurou. Tratar um caso já
+ * liberado ou já recusado seria reabrir na mão uma decisão automática, e isso é
+ * outro assunto — aqui se resolve fila de exceção, não se revisa veredito.
+ */
+export function tratarSessao(
+  sessaoId: UUID,
+  escolha: { desfechoId: string; motivo: string; por: string },
+): SessaoMotorista | null {
+  const s = state();
+  const sessao = s.sessoes.find((x) => x.id === sessaoId);
+  if (!sessao?.resultado) return null;
+  if (sessao.resultado.efeito !== "segura") return null;
+
+  const pesquisa = obterPesquisa(sessao.pesquisaId);
+  const desfecho = desfechosDa(pesquisa ?? {}).find((d) => d.id === escolha.desfechoId);
+  if (!desfecho) return null;
+
+  const agora = new Date().toISOString();
+
+  sessao.tratamento = {
+    por: escolha.por,
+    em: agora,
+    motivo: escolha.motivo,
+    desfechoAutomatico: sessao.resultado.tipo,
+    efeitoAutomatico: sessao.resultado.efeito,
+  };
+
+  /* A régua e a versão que decidiram continuam gravadas: o caso passou pelo
+     motor antes de chegar à fila, e apagar isso perderia o porquê de ele ter
+     sido segurado. O que muda é o fim. */
+  sessao.resultado = {
+    ...sessao.resultado,
+    tipo: desfecho.id,
+    efeito: desfecho.efeito,
+    motivo: escolha.motivo,
+    proximaAcao: desfecho.efeito === "libera" ? desfecho.texto : undefined,
+    decididoEm: agora,
+  };
+
+  /*
+   * O canal sai do que a própria jornada colheu. Nenhuma pesquisa é obrigada a
+   * pedir e-mail, então pode não haver para onde avisar — e a tela precisa
+   * dizer isso em vez de fingir que a mensagem saiu.
+   */
+  const contato = Object.entries(sessao.respostas).find(
+    ([campo, valor]) =>
+      typeof valor === "string" && valor.includes("@") && /mail/i.test(campo),
+  );
+
+  sessao.avisos = [
+    ...(sessao.avisos ?? []),
+    {
+      canal: contato ? "e-mail" : "sem canal",
+      destino: contato?.[1] as string | undefined,
+      texto:
+        desfecho.efeito === "libera"
+          ? `Sua análise foi concluída: ${desfecho.titulo}`
+          : `Sua análise foi concluída e não seguimos com o pedido. ${escolha.motivo}`,
+      registradoEm: agora,
+    },
+  ];
+
+  sessao.atualizadaEm = agora;
+  return sessao;
+}
+
 // --------------------------------------------------------------------------
 // Pedidos (vendedor)
 // --------------------------------------------------------------------------

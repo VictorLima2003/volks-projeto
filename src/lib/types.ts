@@ -575,6 +575,49 @@ export interface SessaoMotorista {
   externos?: Record<string, Record<string, unknown>>;
   resultado?: DecisaoResultado;
   ruleSetVersao?: number;
+  /** Preenchido quando uma pessoa decidiu no lugar do motor. Ver `TratamentoManual`. */
+  tratamento?: TratamentoManual;
+  /** O que já foi avisado ao respondente sobre esta jornada. */
+  avisos?: AvisoAoRespondente[];
+}
+
+/**
+ * A conferência humana de um caso que o motor segurou.
+ *
+ * Tratar **sobrescreve** o `resultado` da sessão, e não cria um segundo veredito
+ * ao lado dele. Dois resultados conviventes obrigariam cada tela — consulta do
+ * vendedor, submissões, indicadores, exportação — a lembrar qual dos dois vale,
+ * e a primeira que esquecesse mostraria o veredito velho para quem está no
+ * balcão com o motorista na frente.
+ *
+ * O que o motor havia decidido não se perde: fica aqui, com quem decidiu por
+ * cima e por quê. É o que permite auditar depois quantas vezes a régua foi
+ * corrigida na mão, e em que direção.
+ */
+export interface TratamentoManual {
+  por: string;
+  em: string;
+  motivo: string;
+  /** O desfecho que o motor tinha dado, antes de a pessoa decidir. */
+  desfechoAutomatico: string;
+  efeitoAutomatico: EfeitoDoDesfecho;
+}
+
+/**
+ * Um aviso ao respondente.
+ *
+ * Fica registrado como dado, e o envio de verdade não existe neste protótipo:
+ * não há serviço de e-mail nem de mensagem. Guardar o aviso mesmo assim é o que
+ * deixa a tela dizer a verdade — "avisado em tal data, por tal canal" — em vez
+ * de sumir com a informação e deixar o gestor sem saber se já falou com a
+ * pessoa. Quando entrar um serviço de envio, é este registro que ele consome.
+ */
+export interface AvisoAoRespondente {
+  /** Onde a mensagem chegaria: um e-mail respondido na jornada, por exemplo. */
+  canal: string;
+  destino?: string;
+  texto: string;
+  registradoEm: string;
 }
 
 export interface DecisaoResultado {

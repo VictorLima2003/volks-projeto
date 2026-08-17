@@ -216,10 +216,10 @@ separa papéis; não protege contas. Antes de sair de demonstração, entra aute
 | `/gestor/fontes` | Gestor | **Editor de código** das fontes |
 | `/gestor/revisoes` | Gestor | Fila de versões em revisão e trilha de decisões |
 | `/gestor/submissoes` | Gestor | Todas as submissões, com estado técnico, CSV e credenciais de API |
-| `/gestor/central` | Gestor | Exceções |
+| `/gestor/central` | Gestor | Fila de exceções: o gestor libera ou recusa o que o motor segurou |
 
 APIs internas: `pesquisa`, `hooks`, `executar-hook`, `rulesets`, `decidir`, `pedidos`,
-`lookup`, `identidade`, `sessao`, `exportar`, `tokens`, `reset`.
+`lookup`, `identidade`, `sessao`, `central`, `exportar`, `tokens`, `reset`.
 
 **API externa** — a única rota pensada para ser chamada de fora:
 

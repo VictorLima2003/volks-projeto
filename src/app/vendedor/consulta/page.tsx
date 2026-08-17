@@ -9,6 +9,7 @@ import { exigirUsuarioNaTela } from "@/lib/identidade-server";
 import { Badge, Card, LinkButton } from "@/components/ui";
 import { ROTULO_PEDIDO_STATUS } from "@/lib/catalogo";
 import { criteriosLegiveis, mapaDeRotulos, rotularFato, todasAsPerguntas } from "@/lib/engine";
+import { nomeDeUsuario } from "@/lib/identidade";
 import { Bloco , desfechosDa } from "@/lib/types";
 import { listarHooks, listarPesquisas, listarSessoes, pedidosPorCpf, versaoAtivaDaPesquisa } from "@/lib/store";
 import Link from "next/link";
@@ -147,12 +148,27 @@ export default function Consulta({ searchParams }: { searchParams: { cpf?: strin
          * para quem responde ("Você atende aos critérios"). No balcão, essa
          * segunda pessoa é a errada.
          */}
+        {/*
+         * Liberado na análise manual não é liberado pelos critérios.
+         *
+         * A frase dos critérios estava sendo escrita para todo caso liberado, e
+         * num caso que a Central liberou na mão ela afirma no balcão uma coisa
+         * que não aconteceu: o motor tinha segurado justamente por não conseguir
+         * confirmar esses critérios. Aqui vale o motivo de quem decidiu.
+         */}
         {liberado ? (
-          criterios.length > 0 && (
+          ultima?.tratamento ? (
             <p className="text-base text-ink-800 mt-8">
-              O motorista atende aos critérios necessários:{" "}
-              <strong className="font-semibold">{criterios.join(" · ")}</strong>.
+              Liberado na análise manual por {nomeDeUsuario(ultima.tratamento.por).nome}:{" "}
+              <strong className="font-semibold">{ultima.tratamento.motivo}</strong>
             </p>
+          ) : (
+            criterios.length > 0 && (
+              <p className="text-base text-ink-800 mt-8">
+                O motorista atende aos critérios necessários:{" "}
+                <strong className="font-semibold">{criterios.join(" · ")}</strong>.
+              </p>
+            )
           )
         ) : (
           ultima?.resultado && (
