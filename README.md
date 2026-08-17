@@ -165,15 +165,15 @@ Cada perfil tem sua área. **Não existe header global** — quem está numa ár
 | `/motorista/jornada?pesquisa=&cpf=` | Respondente | A pesquisa, passo a passo |
 | `/vendedor` | Vendedor | Carteira de pedidos |
 | `/vendedor/consulta?cpf=` | Vendedor | Situação, motivo, próxima ação |
-| `/gestor/pesquisas` | Gestor | Grid de pesquisas (a porta do gestor) |
+| `/gestor/pesquisas` | Gestor | Lista de pesquisas com perguntas e respostas (a porta do gestor) |
 | `/gestor/pesquisas/nova` | Gestor | Criação (nome e descrição) |
 | `/gestor/pesquisas/[id]` | Gestor | **Construtor** — Fluxo, Definição, Regras, Simulação, Configuração |
 | `/gestor/pesquisas/[id]/regras-editar` | Gestor | Edita os critérios e propõe nova versão |
+| `/gestor/pesquisas/[id]/indicadores` | Gestor | Indicadores daquela pesquisa: funil, desfechos, motivos |
 | `/gestor/fontes` | Gestor | **Editor de código** das fontes |
 | `/gestor/revisoes` | Gestor | Fila de versões em revisão e trilha de decisões |
 | `/gestor/submissoes` | Gestor | Todas as submissões, com estado técnico, CSV e credenciais de API |
 | `/gestor/central` | Gestor | Exceções |
-| `/gestor/dashboard` | Gestor | Indicadores |
 
 APIs internas: `pesquisa`, `hooks`, `executar-hook`, `rulesets`, `decidir`, `pedidos`,
 `lookup`, `identidade`, `sessao`, `exportar`, `tokens`, `reset`.

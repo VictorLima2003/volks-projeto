@@ -16,6 +16,10 @@ import { cn } from "./ui";
  * cobrar largura permanente para mostrar três palavras. O construtor de fluxo é
  * quem mais sente: o canvas ganha a faixa inteira.
  *
+ * Indicadores saiu daqui porque virou coisa de uma pesquisa só: a soma de duas
+ * ofertas em praças diferentes não respondia pergunta que alguém faça. Cada
+ * linha da lista de pesquisas leva aos indicadores dela.
+ *
  * Sem a palavra "Gestor" ao lado da marca e sem data: quem está aqui dentro já
  * sabe onde está, e o `aria-label` do link continua dizendo para leitor de tela.
  */
@@ -23,7 +27,6 @@ import { cn } from "./ui";
 const ITENS = [
   { href: "/gestor/pesquisas", label: "Pesquisas" },
   { href: "/gestor/submissoes", label: "Submissões" },
-  { href: "/gestor/dashboard", label: "Indicadores" },
   /*
    * Revisões e Central seguem fora da navegação a pedido — as rotas, as APIs
    * e as travas continuam de pé. Para trazer de volta, basta descomentar.
