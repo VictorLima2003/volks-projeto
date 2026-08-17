@@ -93,6 +93,8 @@ export interface Pesquisa {
    * `APRESENTACAO_PADRAO`.
    */
   apresentacao?: Apresentacao;
+  /** A etapa fixa de autorização. Ver `CONSENTIMENTO_PADRAO`. */
+  consentimento?: Consentimento;
   criadaEm: string;
   atualizadaEm: string;
 }
@@ -184,6 +186,104 @@ export const PERGUNTA_DA_CAPA_PADRAO: BlocoPergunta = {
 };
 
 /** O que existia antes de a capa ser configurável — e o que pesquisa velha usa. */
+/**
+ * A autorização para consultar dados, como etapa fixa depois da capa.
+ *
+ * Não é um bloco da árvore, e isso é a decisão. Como bloco, ela podia ser
+ * apagada sem querer, arrastada para depois de um fim de caminho, ou
+ * simplesmente não existir numa pesquisa criada às pressas — e a pergunta
+ * "com que base vocês consultaram o CPF dessa pessoa?" ficaria sem resposta
+ * justamente na pesquisa em que ninguém pensou nisso.
+ *
+ * Como etapa estrutural, ela existe em toda pesquisa, inclusive nas importadas
+ * de fora. O que se edita é o texto; o que não se edita é a existência dela —
+ * fora desligá-la de propósito, que é uma decisão consciente e registrada.
+ *
+ * O campo é sempre `consentimento`, e por isso as condições podem lê-lo como
+ * `resposta.consentimento` em qualquer pesquisa.
+ */
+export const CAMPO_DO_CONSENTIMENTO = "consentimento";
+
+export interface Consentimento {
+  ativo: boolean;
+  pergunta: string;
+  ajuda?: string;
+  tituloDaRecusa: string;
+  mensagemDaRecusa: string;
+}
+
+export const CONSENTIMENTO_PADRAO: Consentimento = {
+  ativo: true,
+  pergunta: "Podemos consultar seus dados para conferir se você tem direito?",
+  ajuda: "É o que evita pedir comprovante e print para você.",
+  tituloDaRecusa: "Sem a autorização, não temos como conferir",
+  mensagemDaRecusa:
+    "Nada foi consultado e nada fica guardado. Você pode voltar e autorizar quando quiser, ou falar com uma concessionária.",
+};
+
+export function consentimentoDe(pesquisa: { consentimento?: Consentimento }): Consentimento {
+  return pesquisa.consentimento ?? CONSENTIMENTO_PADRAO;
+}
+
+/**
+ * A etapa traduzida para os blocos que o motor já sabe percorrer.
+ *
+ * Em vez de ensinar a jornada, a régua de progresso, o mapa e o "voltar" a
+ * conhecer um passo especial, a etapa é convertida nos dois blocos que
+ * descrevem exatamente o mesmo comportamento. Tudo que já funciona para uma
+ * pergunta passa a funcionar para ela sem uma linha nova.
+ *
+ * A condição é `existe` **e** `é falso`, e não só `é falso`: `falsy` sozinho
+ * também casa com "ainda não respondeu", e aí o percurso inteiro apareceria
+ * truncado no primeiro passo, prometendo uma jornada de dois passos que vira de
+ * cinco assim que a pessoa autoriza.
+ */
+export function blocosDoConsentimento(c: Consentimento): Bloco[] {
+  if (!c.ativo) return [];
+  return [
+    {
+      id: "__consentimento__",
+      bloco: "pergunta",
+      campo: CAMPO_DO_CONSENTIMENTO,
+      rotulo: c.pergunta,
+      ajuda: c.ajuda,
+      tipo: "consentimento",
+      obrigatoria: true,
+    },
+    {
+      id: "__sem_consentimento__",
+      bloco: "condicional",
+      rotulo: "Não autorizou",
+      condicao: {
+        todas: [
+          { fato: `resposta.${CAMPO_DO_CONSENTIMENTO}`, operador: "exists" },
+          { fato: `resposta.${CAMPO_DO_CONSENTIMENTO}`, operador: "falsy" },
+        ],
+        fato: "",
+        operador: "truthy",
+      },
+      entao: [
+        {
+          id: "__fim_sem_consentimento__",
+          bloco: "feedback",
+          tipo: "info",
+          titulo: c.tituloDaRecusa,
+          mensagem: c.mensagemDaRecusa,
+        },
+      ],
+      senao: [],
+    },
+  ];
+}
+
+/** A árvore como o respondente a percorre: a etapa fixa antes do que foi montado. */
+export function blocosParaResponder(pesquisa: {
+  blocos: Bloco[];
+  consentimento?: Consentimento;
+}): Bloco[] {
+  return [...blocosDoConsentimento(consentimentoDe(pesquisa)), ...pesquisa.blocos];
+}
+
 export const APRESENTACAO_PADRAO: Apresentacao = {
   fundo: "persianas",
   entrada: "pergunta",

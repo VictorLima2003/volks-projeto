@@ -3,6 +3,7 @@ import {
   Apresentacao,
   Bloco,
   Condicao,
+  Consentimento,
   Desfecho,
   Hook,
   ParametroHook,
@@ -155,6 +156,8 @@ export interface PesquisaPortavel {
   descricao?: string;
   chamada?: string;
   apresentacao?: Apresentacao;
+  /** A etapa fixa de autorização, com o texto que o autor escreveu. */
+  consentimento?: Consentimento;
   blocos: Bloco[];
   desfechos?: Desfecho[];
   /**
@@ -252,6 +255,7 @@ export function pesquisaDeArquivo(texto: string): Resultado<PesquisaPortavel> {
       descricao: typeof p.descricao === "string" ? p.descricao : undefined,
       chamada: typeof p.chamada === "string" ? p.chamada : undefined,
       apresentacao: p.apresentacao,
+      consentimento: p.consentimento,
       blocos: p.blocos,
       desfechos: Array.isArray(p.desfechos) ? p.desfechos : undefined,
       regras: Array.isArray(p.regras) ? p.regras : undefined,

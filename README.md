@@ -143,6 +143,13 @@ condicional  Encontrado na base
 
 O percurso é recalculado a cada resposta — uma resposta nova pode abrir ou fechar ramos adiante.
 
+**A autorização é etapa fixa, não bloco.** Toda pesquisa pergunta, logo depois da capa, se pode
+consultar os dados de quem responde. Ela não está na árvore de propósito: como bloco, podia ser
+apagada sem querer ou nunca existir numa pesquisa criada às pressas — e "com que base vocês
+consultaram o CPF dessa pessoa?" ficaria sem resposta justamente onde ninguém pensou nisso. O que se
+edita é o texto, no nó **autorização** do fluxo; desligá-la é possível e vira decisão consciente.
+A resposta fica gravada como `resposta.consentimento`, e `/api/decidir` recusa decidir sem ela.
+
 ### 2. Fatos são um dicionário plano, montado em tempo de execução
 
 ```js

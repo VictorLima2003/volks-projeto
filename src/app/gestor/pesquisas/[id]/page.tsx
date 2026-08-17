@@ -1,7 +1,7 @@
 import { podePropor } from "@/lib/identidade";
 import { exigirUsuarioNaTela } from "@/lib/identidade-server";
 import { listarHooks, obterPesquisa } from "@/lib/store";
-import { APRESENTACAO_PADRAO, desfechosDa } from "@/lib/types";
+import { APRESENTACAO_PADRAO, CONSENTIMENTO_PADRAO, desfechosDa } from "@/lib/types";
 import { notFound } from "next/navigation";
 import { ConstrutorPesquisa } from "./construtor";
 
@@ -29,6 +29,7 @@ export default function PaginaPesquisa({ params }: { params: { id: string } }) {
         chamada: pesquisa.chamada ?? "",
       }}
       apresentacaoInicial={{ ...APRESENTACAO_PADRAO, ...pesquisa.apresentacao }}
+      consentimentoInicial={{ ...CONSENTIMENTO_PADRAO, ...pesquisa.consentimento }}
       versoes={JSON.parse(JSON.stringify(pesquisa.versoes))}
       desfechosIniciais={desfechosDa(pesquisa)}
       versaoAtivaId={pesquisa.versaoAtivaId}

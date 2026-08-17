@@ -3,7 +3,7 @@ import { mapaDeRotulos } from "@/lib/engine";
 import { podePropor } from "@/lib/identidade";
 import { usuarioAtual } from "@/lib/identidade-server";
 import { listarHooks, obterPesquisa } from "@/lib/store";
-import { desfechosDa } from "@/lib/types";
+import { blocosParaResponder, desfechosDa } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +46,13 @@ export async function GET(req: Request) {
        * a ser publicado, e não a versão que já está lá — que é justamente o que
        * quem vai publicar quer conferir.
        */
-      blocos: previa ? pesquisa.blocosRascunho ?? pesquisa.blocos : pesquisa.blocos,
+      /* A etapa de consentimento entra aqui, e não na árvore gravada: é o que
+         faz toda pesquisa ter a autorização sem ela poder ser apagada por
+         engano no construtor. */
+      blocos: blocosParaResponder({
+        blocos: previa ? (pesquisa.blocosRascunho ?? pesquisa.blocos) : pesquisa.blocos,
+        consentimento: pesquisa.consentimento,
+      }),
       /**
        * O identificador que a capa colheu, quando ela colheu algo.
        *

@@ -383,9 +383,22 @@ function JornadaInner() {
     [respostas],
   );
 
+  /**
+   * Onde a pessoa está: o **índice da primeira não respondida**, e não a
+   * contagem das respondidas.
+   *
+   * Os dois davam o mesmo número enquanto se respondia em ordem. Com a
+   * autorização entrando antes da pergunta que a capa já respondeu, deixaram de
+   * dar: uma resposta existia adiante e nenhuma atrás, a contagem dizia "passo
+   * 2" no primeiro passo, e o "voltar" apontava para a própria pergunta em
+   * cena.
+   */
   const progresso = useMemo(() => {
-    const feitas = visiveis.filter(respondida).length;
-    return { feitas, total: visiveis.length };
+    const primeiraEmAberto = visiveis.findIndex((p) => !respondida(p));
+    return {
+      feitas: primeiraEmAberto === -1 ? visiveis.length : primeiraEmAberto,
+      total: visiveis.length,
+    };
   }, [visiveis, respondida]);
 
   useEffect(() => {

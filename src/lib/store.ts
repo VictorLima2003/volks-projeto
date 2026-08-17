@@ -1,5 +1,6 @@
 import {
   APRESENTACAO_PADRAO,
+  CONSENTIMENTO_PADRAO,
   DESFECHOS_PADRAO,
   desfechosDa,
   DecisaoResultado,
@@ -89,6 +90,7 @@ export function criarPesquisa(nome: string, descricao?: string): Pesquisa {
     blocos: [],
     versoes: [],
     apresentacao: { ...APRESENTACAO_PADRAO },
+    consentimento: { ...CONSENTIMENTO_PADRAO },
     /* Cópia, não referência: mexer nos desfechos de uma pesquisa não pode
        reescrever os das outras. */
     desfechos: DESFECHOS_PADRAO.map((d) => ({ ...d })),

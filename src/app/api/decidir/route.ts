@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { despacharDestinos } from "@/lib/destinos";
+import { CAMPO_DO_CONSENTIMENTO, consentimentoDe } from "@/lib/types";
 import {
   abrirSessao,
   atualizarResposta,
   finalizarSessao,
   obterOuIniciarSessao,
+  obterPesquisa,
   obterSessao,
   registrarExternos,
 } from "@/lib/store";
@@ -28,6 +30,27 @@ export async function POST(req: Request) {
   // Os fatos externos vieram das consultas disparadas durante a jornada e
   // precisam entrar na decisão junto com as respostas.
   registrarExternos(sessao.id, externos ?? {});
+
+  const pesquisa = obterPesquisa(pesquisaId);
+  if (!pesquisa) {
+    return NextResponse.json({ erro: "pesquisa_nao_encontrada" }, { status: 404 });
+  }
+
+  /*
+   * A trava real da autorização. A tela encerra a jornada de quem recusa, mas
+   * tela não é trava: um POST aqui, sem passar pelo formulário, decidiria com
+   * dados que ninguém autorizou consultar.
+   */
+  const consentimento = consentimentoDe(pesquisa);
+  if (consentimento.ativo && !(respostas ?? {})[CAMPO_DO_CONSENTIMENTO]) {
+    return NextResponse.json(
+      {
+        erro: "sem_consentimento",
+        detalhe: "Esta pesquisa exige autorização para consultar os dados, e ela não foi dada.",
+      },
+      { status: 403 },
+    );
+  }
 
   const decisao = finalizarSessao(sessao.id);
   if (!decisao) {

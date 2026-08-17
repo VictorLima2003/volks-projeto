@@ -184,6 +184,15 @@ export const CAPA = "__capa__";
 export const CARTAO = "__cartao__";
 
 /**
+ * A autorização, entre o cartão e o primeiro bloco montado.
+ *
+ * Como a capa e o cartão, ela não está na árvore — é etapa do sistema. Aparecer
+ * no desenho é o que impede alguém de montar um fluxo inteiro sem perceber que
+ * existe uma pergunta antes do que ele escreveu.
+ */
+export const CONSENTIMENTO = "__consentimento_no__";
+
+/**
  * O convite de um ramo vazio, no meio da linha dele.
  *
  * Fica **sempre visível**, e não só ao passar o mouse: controle que depende de
@@ -200,6 +209,7 @@ export function MapaFluxo({
   problemas,
   selecionado,
   capa,
+  consentimento,
   onSelecionar,
   onAdicionarNoFim,
   onAdicionarNoRamo,
@@ -209,6 +219,7 @@ export function MapaFluxo({
   selecionado: string | null;
   /** Resumo da tela de entrada, para os nós dizerem o que ela é hoje. */
   capa: ResumoDaCapa;
+  consentimento: { ativo: boolean; pergunta: string };
   onSelecionar: (id: string | null) => void;
   /** Clique no nó fantasma. Recebe o retângulo dele, para o popover nascer ali. */
   onAdicionarNoFim: (retangulo: DOMRect) => void;
@@ -241,12 +252,24 @@ export function MapaFluxo({
       /* Capa → cartão → primeiro bloco (ou o fantasma, na pesquisa vazia). É o
          que dá ao dagre a corrente para empilhar tudo. */
       { id: `${CAPA}->${CARTAO}`, de: CAPA, para: CARTAO, ramo: undefined },
-      {
-        id: `${CARTAO}->${grafo.nos[0]?.id ?? FANTASMA}`,
-        de: CARTAO,
-        para: grafo.nos[0]?.id ?? FANTASMA,
-        ramo: undefined,
-      },
+      ...(consentimento.ativo
+        ? [
+            { id: `${CARTAO}->${CONSENTIMENTO}`, de: CARTAO, para: CONSENTIMENTO, ramo: undefined },
+            {
+              id: `${CONSENTIMENTO}->${grafo.nos[0]?.id ?? FANTASMA}`,
+              de: CONSENTIMENTO,
+              para: grafo.nos[0]?.id ?? FANTASMA,
+              ramo: undefined,
+            },
+          ]
+        : [
+            {
+              id: `${CARTAO}->${grafo.nos[0]?.id ?? FANTASMA}`,
+              de: CARTAO,
+              para: grafo.nos[0]?.id ?? FANTASMA,
+              ramo: undefined,
+            },
+          ]),
       ...grafo.pontas.map((p) => ({
         id: `${p.de}->${FANTASMA}${p.ramo ? `:${p.ramo}` : ""}`,
         de: p.de,
@@ -285,6 +308,7 @@ export function MapaFluxo({
       [
         { id: CAPA } as NoFluxo,
         { id: CARTAO } as NoFluxo,
+        ...(consentimento.ativo ? [{ id: CONSENTIMENTO } as NoFluxo] : []),
         ...grafo.nos,
         ...(comFantasma ? [{ id: FANTASMA } as NoFluxo] : []),
         ...conviteDeRamo.map((c) => ({ id: c.id }) as NoFluxo),
@@ -316,6 +340,16 @@ export function MapaFluxo({
       data: { capa, selecionado: selecionado === CAPA } as unknown as DadosNo,
       draggable: false,
     });
+
+    if (consentimento.ativo) {
+      nodes.push({
+        id: CONSENTIMENTO,
+        type: "consentimento",
+        position: posicoes.get(CONSENTIMENTO) ?? { x: 0, y: 0 },
+        data: { consentimento, selecionado: selecionado === CONSENTIMENTO } as unknown as DadosNo,
+        draggable: false,
+      });
+    }
 
     nodes.push({
       id: CARTAO,
@@ -373,7 +407,7 @@ export function MapaFluxo({
     }));
 
     return { nodes, edges };
-  }, [grafo, problemas, selecionado, capa]);
+  }, [grafo, problemas, selecionado, capa, consentimento]);
 
   const nodeTypes = useMemo(
     () => ({
@@ -382,6 +416,7 @@ export function MapaFluxo({
       convite: NoConviteDeRamo,
       capa: NoCapa,
       cartao: NoCartao,
+      consentimento: NoConsentimento,
     }),
     [],
   );
@@ -652,4 +687,34 @@ function SeloDoTipo({ bloco }: { bloco: Bloco }) {
     );
   }
   return <Badge tone="neutral">pergunta</Badge>;
+}
+
+/**
+ * A autorização no desenho.
+ *
+ * Selo próprio, e não o de "pergunta": ela não sai da árvore e não pode ser
+ * arrastada nem apagada como um bloco. Quem clica cai no painel do texto dela.
+ */
+function NoConsentimento({ data }: NodeProps) {
+  const { consentimento, selecionado } = data as unknown as {
+    consentimento: { pergunta: string };
+    selecionado: boolean;
+  };
+
+  return (
+    <NoBase
+      selecionado={selecionado}
+      style={{ width: LARGURA, height: ALTURA }}
+      className="flex flex-col justify-center gap-1"
+    >
+      <Handle type="target" position={Position.Top} className="fluxo-ponta" />
+      <div className="flex items-center gap-2 min-w-0">
+        <Badge tone="neutral">autorização</Badge>
+      </div>
+      <div className="text-[12px] font-semibold text-ink-900 truncate leading-snug">
+        {consentimento.pergunta}
+      </div>
+      <Handle type="source" position={Position.Bottom} className="fluxo-ponta" />
+    </NoBase>
+  );
 }

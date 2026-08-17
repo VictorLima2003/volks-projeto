@@ -12,3 +12,8 @@ next-env.d.ts
 # ferramentas locais, nao do produto
 .hallmark
 .claude/skills
+
+# imagens soltas na raiz: caem aqui por arrasto e nao sao do projeto
+/*.png
+/*.jpg
+/*.jpeg

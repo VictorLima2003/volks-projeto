@@ -4,6 +4,8 @@ import { fontesCitadas, PesquisaPortavel } from "@/lib/portabilidade";
 import {
   APRESENTACAO_PADRAO,
   Apresentacao,
+  Consentimento,
+  CONSENTIMENTO_PADRAO,
   Bloco,
   BlocoPergunta,
   Desfecho,
@@ -168,6 +170,7 @@ function importar(p: PesquisaPortavel, autorId: string) {
   pesquisa.chamada = p.chamada;
   pesquisa.blocos = p.blocos;
   if (p.apresentacao) pesquisa.apresentacao = p.apresentacao;
+  if (p.consentimento) pesquisa.consentimento = p.consentimento;
   if (p.desfechos?.length) pesquisa.desfechos = p.desfechos;
 
   if (p.regras?.length) {
@@ -303,7 +306,17 @@ export async function PUT(req: Request) {
  * texto sobrescrever o que outra pessoa acabou de configurar na outra aba.
  */
 export async function PATCH(req: Request) {
-  const { pesquisaId, nome, descricao, status, chamada, apresentacao, desfechos, descartarRascunho } =
+  const {
+    pesquisaId,
+    nome,
+    descricao,
+    status,
+    chamada,
+    apresentacao,
+    consentimento,
+    desfechos,
+    descartarRascunho,
+  } =
     (await req.json()) as {
       pesquisaId: string;
       desfechos?: Desfecho[];
@@ -312,6 +325,7 @@ export async function PATCH(req: Request) {
       status?: PesquisaStatus;
       chamada?: string;
       apresentacao?: Apresentacao;
+      consentimento?: Consentimento;
       descartarRascunho?: boolean;
     };
 
@@ -366,6 +380,29 @@ export async function PATCH(req: Request) {
        frase devolveria o texto anterior sem a pessoa entender por quê. */
     pesquisa.chamada = chamada.trim().slice(0, LIMITE_DO_TITULO) || undefined;
   }
+  if (consentimento !== undefined) {
+    /*
+     * Texto vazio cai no padrão, e não grava vazio.
+     *
+     * A etapa continua existindo mesmo se alguém apagar tudo, e uma pergunta em
+     * branco na tela do respondente seria pior que a frase padrão: ele veria
+     * dois botões sem saber o que está autorizando.
+     */
+    const limpo = (v: unknown, padrao: string) =>
+      typeof v === "string" && v.trim() ? v.trim() : padrao;
+
+    pesquisa.consentimento = {
+      ativo: consentimento.ativo !== false,
+      pergunta: limpo(consentimento.pergunta, CONSENTIMENTO_PADRAO.pergunta),
+      ajuda: typeof consentimento.ajuda === "string" ? consentimento.ajuda.trim() : undefined,
+      tituloDaRecusa: limpo(consentimento.tituloDaRecusa, CONSENTIMENTO_PADRAO.tituloDaRecusa),
+      mensagemDaRecusa: limpo(
+        consentimento.mensagemDaRecusa,
+        CONSENTIMENTO_PADRAO.mensagemDaRecusa,
+      ),
+    };
+  }
+
   if (apresentacao !== undefined) {
     /*
      * O fundo e a entrada entram por lista, não por confiança no cliente.

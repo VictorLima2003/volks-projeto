@@ -2,7 +2,15 @@
 
 import { useAviso } from "@/components/Avisos";
 import { contarBlocos, versaoQueDecide } from "@/lib/engine";
-import { Apresentacao, Bloco, Desfecho, Hook, PesquisaStatus, RuleSet } from "@/lib/types";
+import {
+  Apresentacao,
+  Bloco,
+  Consentimento,
+  Desfecho,
+  Hook,
+  PesquisaStatus,
+  RuleSet,
+} from "@/lib/types";
 import {
   atualizarBloco,
   identificadoresEmUso,
@@ -26,6 +34,7 @@ import { PainelPublicacao } from "./painel-publicacao";
 import { Ancora, PainelTipos } from "./painel-tipos";
 import { PainelRegras } from "./painel-regras";
 import { baixarTexto, pesquisaParaArquivo } from "@/lib/portabilidade";
+import { PainelConsentimento } from "./painel-consentimento";
 import { CartaoPesquisa } from "./popover-pesquisa";
 import { SimuladorFluxo } from "./simulador-fluxo";
 
@@ -47,6 +56,7 @@ const MapaFluxo = dynamic(() => import("./mapa-fluxo").then((m) => m.MapaFluxo),
  */
 const CAPA = "__capa__";
 const CARTAO = "__cartao__";
+const CONSENTIMENTO = "__consentimento_no__";
 
 /**
  * O canvas só entra depois que o componente montou no navegador.
@@ -102,6 +112,7 @@ export function ConstrutorPesquisa({
   hooks,
   configuracao,
   apresentacaoInicial,
+  consentimentoInicial,
   versoes,
   versaoAtivaId,
   desfechosIniciais,
@@ -122,6 +133,7 @@ export function ConstrutorPesquisa({
     chamada: string;
   };
   apresentacaoInicial: Apresentacao;
+  consentimentoInicial: Consentimento;
   versoes: RuleSet[];
   versaoAtivaId?: string;
   /** Os fins possíveis desta pesquisa, como estão gravados. */
@@ -129,6 +141,7 @@ export function ConstrutorPesquisa({
 }) {
   const [blocos, setBlocos] = useState<Bloco[]>(blocosIniciais);
   const [apresentacao, setApresentacao] = useState<Apresentacao>(apresentacaoInicial);
+  const [consentimento, setConsentimento] = useState<Consentimento>(consentimentoInicial);
   /* O texto que a capa escreve. Mora aqui, e não no cartão da marca, porque é o
      conteúdo da tela de entrada — ver o painel da capa. */
   const [texto, setTexto] = useState({
@@ -216,6 +229,12 @@ export function ConstrutorPesquisa({
     const nova = { ...apresentacao, ...patch };
     setApresentacao(nova);
     gravarConfig({ apresentacao: nova });
+  }
+
+  function mudarConsentimento(patch: Partial<Consentimento>) {
+    const novo = { ...consentimento, ...patch };
+    setConsentimento(novo);
+    gravarConfig({ consentimento: novo });
   }
 
   function mudarDesfechos(novos: Desfecho[]) {
@@ -436,6 +455,7 @@ export function ConstrutorPesquisa({
           problemas={problemas}
           selecionado={selecionado}
           capa={apresentacao}
+          consentimento={consentimento}
           onSelecionar={setSelecionado}
           onAdicionarNoFim={(retangulo) => abrirTipos(null, retangulo)}
           onAdicionarNoRamo={(destino, retangulo) => abrirTipos(destino, retangulo)}
@@ -530,6 +550,7 @@ export function ConstrutorPesquisa({
                 descricao: configuracao.descricao,
                 chamada: configuracao.chamada,
                 apresentacao,
+                consentimento,
                 blocos,
                 desfechos,
                 regras: versaoQueDecide(versoes, versaoAtivaId)?.regras,
@@ -725,6 +746,17 @@ export function ConstrutorPesquisa({
             podeEditar={podeEditar}
             onPatch={mudarCapa}
             onPatchTexto={mudarTexto}
+            onFechar={() => setSelecionado(null)}
+          />
+        </div>
+      )}
+
+      {modo === "fluxo" && escolhendoTipo === undefined && selecionado === CONSENTIMENTO && (
+        <div className="absolute top-[4.5rem] right-4 bottom-20 z-20 w-[24rem] flex items-start">
+          <PainelConsentimento
+            consentimento={consentimento}
+            podeEditar={podeEditar}
+            onPatch={mudarConsentimento}
             onFechar={() => setSelecionado(null)}
           />
         </div>
