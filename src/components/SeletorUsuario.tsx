@@ -1,6 +1,6 @@
 "use client";
 
-import { papelLegivel, USUARIOS, USUARIO_PADRAO, Usuario, usuarioDoDocumento } from "@/lib/identidade";
+import { papelLegivel, USUARIOS, Usuario, usuarioDoDocumento } from "@/lib/identidade";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "./ui";
@@ -27,7 +27,10 @@ export function SeletorUsuario({
   const router = useRouter();
   // Começa no padrão para o HTML do servidor bater com o do cliente;
   // o cookie real é lido logo após a montagem.
-  const [atual, setAtual] = useState<Usuario>(USUARIO_PADRAO);
+  /* Começa vazio, e não num usuário inventado: quem monta no servidor não lê
+     cookie, e chutar alguém aqui faria o cabeçalho piscar o nome errado antes
+     de o efeito corrigir. */
+  const [atual, setAtual] = useState<Usuario | undefined>(undefined);
   const [aberto, setAberto] = useState(false);
   const [trocando, setTrocando] = useState(false);
 
@@ -61,10 +64,10 @@ export function SeletorUsuario({
       body: JSON.stringify({ usuarioId: null }),
     });
     setAberto(false);
-    router.push("/");
+    router.push("/entrar");
   }
 
-  const iniciais = atual.nome
+  const iniciais = (atual?.nome ?? "")
     .split(" ")
     .map((p) => p[0])
     .slice(0, 2)
@@ -77,7 +80,7 @@ export function SeletorUsuario({
         onClick={() => setAberto((a) => !a)}
         /* Recolhido, só a inicial: o pílula inteira estourava a largura da barra
            lateral e vazava por cima do conteúdo. */
-        title={compacto ? atual.nome : undefined}
+        title={compacto ? atual?.nome : undefined}
         className={
           "flex items-center rounded-full border hairline-strong hover:border-vw-deep transition " +
           (compacto
@@ -101,7 +104,7 @@ export function SeletorUsuario({
                 cheia ? "flex-1 text-left" : "hidden lg:inline",
               )}
             >
-              {atual.nome}
+              {atual?.nome ?? "…"}
             </span>
             <span className="text-ink-600 text-xs shrink-0" aria-hidden="true">▾</span>
           </>
@@ -134,12 +137,12 @@ export function SeletorUsuario({
                 onClick={() => trocar(u.id)}
                 className={
                   "w-full text-left px-3 py-2.5 rounded-sm transition disabled:opacity-50 " +
-                  (u.id === atual.id ? "bg-vw-deep/8" : "hover:bg-ink-100")
+                  (u.id === atual?.id ? "bg-vw-deep/8" : "hover:bg-ink-100")
                 }
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-base font-medium">{u.nome}</span>
-                  {u.id === atual.id && (
+                  {u.id === atual?.id && (
                     <span className="text-xs font-semibold text-vw-deep">atual</span>
                   )}
                 </div>

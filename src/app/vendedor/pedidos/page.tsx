@@ -1,5 +1,5 @@
 import { ShellFluxo } from "@/components/ShellFluxo";
-import { usuarioAtual } from "@/lib/identidade-server";
+import { exigirUsuarioNaTela } from "@/lib/identidade-server";
 import { listarPedidos } from "@/lib/store";
 import { maisRecentes, TabelaPedidos } from "../tabela-pedidos";
 
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
  * mexeu hoje?"; quem precisa procurar um pedido antigo vem para cá.
  */
 export default function PedidosDaCarteira() {
-  const eu = usuarioAtual();
+  const eu = exigirUsuarioNaTela("vendedor");
   // Mesmo filtro da home: a carteira é de quem está logado.
   const pedidos = maisRecentes(listarPedidos().filter((p) => p.vendedor === eu.id));
 

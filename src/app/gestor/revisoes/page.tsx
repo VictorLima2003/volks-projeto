@@ -1,15 +1,15 @@
 import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, Stat } from "@/components/ui";
 import { diffRuleSets } from "@/lib/engine";
-import { podeRevisar, usuarioPorId } from "@/lib/identidade";
-import { usuarioAtual } from "@/lib/identidade-server";
+import { podeRevisar, nomeDeUsuario } from "@/lib/identidade";
+import { exigirUsuarioNaTela } from "@/lib/identidade-server";
 import { listarPesquisas } from "@/lib/store";
 import { PainelRevisao } from "./painel-revisao";
 
 export const dynamic = "force-dynamic";
 
 export default function Revisoes() {
-  const eu = usuarioAtual();
+  const eu = exigirUsuarioNaTela("gestor");
   const pesquisas = listarPesquisas();
 
   // Cada pesquisa guarda as próprias versões de regra; a fila junta as
@@ -27,7 +27,7 @@ export default function Revisoes() {
           ruleSetId: rs.id,
           versao: rs.versao,
           descricao: rs.descricao,
-          propostoPor: usuarioPorId(rs.propostoPor).nome,
+          propostoPor: nomeDeUsuario(rs.propostoPor).nome,
           propostoPorId: rs.propostoPor,
           propostaEm: rs.propostaEm,
           regras: rs.regras.length,
@@ -46,9 +46,9 @@ export default function Revisoes() {
           pesquisaNome: g.nome,
           versao: rs.versao,
           publicada: Boolean(rs.publicadoEm),
-          quem: usuarioPorId(rs.publicadoPor ?? rs.recusadoPor).nome,
+          quem: nomeDeUsuario(rs.publicadoPor ?? rs.recusadoPor ?? "").nome,
           quando: rs.publicadoEm ?? rs.recusadoEm ?? "",
-          propositor: usuarioPorId(rs.propostoPor).nome,
+          propositor: nomeDeUsuario(rs.propostoPor).nome,
           motivoRecusa: rs.motivoRecusa,
         })),
     )

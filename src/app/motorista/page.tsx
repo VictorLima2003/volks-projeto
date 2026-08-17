@@ -54,7 +54,8 @@ export default function MotoristaHome({
    * `?previa=1`, o link que se compartilha continua sendo o link de verdade, e
    * ver antes de publicar é uma escolha deliberada de quem monta.
    */
-  const previa = searchParams.previa === "1" && podePropor(usuarioAtual());
+  const quem = usuarioAtual();
+  const previa = searchParams.previa === "1" && !!quem && podePropor(quem);
 
   if (pesquisa.status !== "ativa" && !previa) {
     return <ForaDoAr status={pesquisa.status} />;

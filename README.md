@@ -169,9 +169,18 @@ com uma frase e não com erro de campo faltando.
 
 Cada perfil tem sua área. **Não existe header global** — quem está numa área não vê as outras.
 
+`/gestor` e `/vendedor` exigem sessão: sem cookie, o middleware desvia para `/entrar` guardando o
+endereço pretendido, e quem entra na área errada é mandado para a sua. As APIs que mudam alguma
+coisa respondem `401` sem sessão — o middleware é a primeira tranca, não a única. **A área do
+respondente continua aberta**, e é o ponto dela: o link da pesquisa vai para quem não tem conta aqui.
+
+**Não há senha.** O e-mail é conferido contra a lista de cadastros e a sessão vira um cookie. Isso
+separa papéis; não protege contas. Antes de sair de demonstração, entra autenticação de verdade.
+
 | Rota | Área | O que é |
 | --- | --- | --- |
 | `/` | — | Escolha de área |
+| `/entrar` | Gestor e vendedor | Login por e-mail; manda cada perfil para a sua área |
 | `/motorista` | Respondente | Entrada da jornada |
 | `/motorista/jornada?pesquisa=&cpf=` | Respondente | A pesquisa, passo a passo |
 | `/vendedor` | Vendedor | Carteira de pedidos |

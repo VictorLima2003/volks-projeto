@@ -21,7 +21,7 @@ import {
 } from "@/lib/types";
 import { temErro, validarPesquisa } from "@/lib/validacao-pesquisa";
 import { podePropor } from "@/lib/identidade";
-import { usuarioAtual } from "@/lib/identidade-server";
+import { exigirUsuario } from "@/lib/identidade-server";
 
 export const dynamic = "force-dynamic";
 
@@ -122,7 +122,9 @@ export async function POST(req: Request) {
     importada?: PesquisaPortavel;
   };
 
-  const autor = usuarioAtual();
+  const sessao = exigirUsuario();
+  if ("recusa" in sessao) return sessao.recusa;
+  const autor = sessao.usuario;
   if (!podePropor(autor)) {
     return NextResponse.json(
       { erro: "sem_permissao", detalhe: `${autor.nome} não pode criar pesquisas.` },
@@ -241,7 +243,9 @@ export async function PUT(req: Request) {
     publicar?: boolean;
   };
 
-  const autor = usuarioAtual();
+  const sessao = exigirUsuario();
+  if ("recusa" in sessao) return sessao.recusa;
+  const autor = sessao.usuario;
   if (!podePropor(autor)) {
     return NextResponse.json(
       { erro: "sem_permissao", detalhe: `${autor.nome} não pode editar pesquisas.` },
@@ -311,7 +315,9 @@ export async function PATCH(req: Request) {
       descartarRascunho?: boolean;
     };
 
-  const autor = usuarioAtual();
+  const sessao = exigirUsuario();
+  if ("recusa" in sessao) return sessao.recusa;
+  const autor = sessao.usuario;
   if (!podePropor(autor)) {
     return NextResponse.json(
       { erro: "sem_permissao", detalhe: `${autor.nome} não pode editar pesquisas.` },

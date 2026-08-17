@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { obterPesquisa } from "@/lib/store";
 import { Regra, RuleSet } from "@/lib/types";
 import { podeRevisar, podePropor } from "@/lib/identidade";
-import { usuarioAtual } from "@/lib/identidade-server";
+import { exigirUsuario } from "@/lib/identidade-server";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,9 @@ export async function POST(req: Request) {
     descricao?: string;
   };
 
-  const autor = usuarioAtual();
+  const sessao = exigirUsuario();
+  if ("recusa" in sessao) return sessao.recusa;
+  const autor = sessao.usuario;
   if (!podePropor(autor)) {
     return NextResponse.json(
       { erro: "sem_permissao", detalhe: `${autor.nome} não tem permissão para propor regras.` },
@@ -91,7 +93,9 @@ export async function PATCH(req: Request) {
     motivo?: string;
   };
 
-  const usuario = usuarioAtual();
+  const sessao = exigirUsuario();
+  if ("recusa" in sessao) return sessao.recusa;
+  const usuario = sessao.usuario;
   const pesquisa = obterPesquisa(pesquisaId);
   if (!pesquisa) {
     return NextResponse.json({ erro: "pesquisa_nao_encontrada" }, { status: 404 });

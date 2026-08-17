@@ -30,10 +30,20 @@ export const USUARIOS: Usuario[] = [
 ];
 
 export const COOKIE_USUARIO = "volkswagen_usuario";
-export const USUARIO_PADRAO = USUARIOS[0];
 
-export function usuarioPorId(id: string | undefined): Usuario {
-  return USUARIOS.find((u) => u.id === id) ?? USUARIO_PADRAO;
+/**
+ * Quem é o dono deste cookie — ou ninguém.
+ *
+ * Devolvia o primeiro usuário da lista quando não achava, e isso era um buraco:
+ * quem chegasse sem cookie virava a Ana, de Produto, e passava por toda trava de
+ * papel do sistema. A prévia de uma pesquisa fora do ar, por exemplo, abria para
+ * qualquer um que soubesse pôr `previa=1` na URL.
+ *
+ * Sem ninguém é `undefined`, e quem chama decide o que fazer: tela manda para o
+ * login, API responde 401.
+ */
+export function usuarioPorId(id: string | undefined): Usuario | undefined {
+  return USUARIOS.find((u) => u.id === id);
 }
 
 export function podeRevisar(u: Usuario): boolean {
@@ -52,8 +62,29 @@ export function papelLegivel(u: Usuario): string {
 }
 
 /** Leitura do cookie no navegador — usada pelo seletor no header. */
-export function usuarioDoDocumento(): Usuario {
-  if (typeof document === "undefined") return USUARIO_PADRAO;
+export function usuarioDoDocumento(): Usuario | undefined {
+  if (typeof document === "undefined") return undefined;
   const match = document.cookie.match(new RegExp(`(?:^|; )${COOKIE_USUARIO}=([^;]*)`));
   return usuarioPorId(match ? decodeURIComponent(match[1]) : undefined);
+}
+
+/**
+ * Como escrever um id de usuário na tela, inclusive o de quem saiu.
+ *
+ * A trilha de auditoria guarda ids, e id de gente que deixou a empresa continua
+ * lá — é o ponto de guardar. A tela precisa mostrar alguma coisa em vez de
+ * quebrar, e mostrar o próprio id é mais honesto que inventar um nome.
+ */
+export function nomeDeUsuario(id: string): { nome: string; onde: string } {
+  const u = usuarioPorId(id);
+  return u
+    ? { nome: u.nome, onde: u.concessionaria ?? u.area }
+    : { nome: id, onde: "fora do quadro" };
+}
+
+/** A área de trabalho de quem entra: é para onde o login manda. */
+export function areaDe(u: Usuario): "gestor" | "vendedor" {
+  return u.papeis.includes("vende") && !podePropor(u) && !podeRevisar(u)
+    ? "vendedor"
+    : "gestor";
 }

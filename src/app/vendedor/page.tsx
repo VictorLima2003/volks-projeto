@@ -1,6 +1,6 @@
 import { ShellFluxo } from "@/components/ShellFluxo";
 import { Card, Stat } from "@/components/ui";
-import { usuarioAtual } from "@/lib/identidade-server";
+import { exigirUsuarioNaTela } from "@/lib/identidade-server";
 import { listarPedidos, listarSessoes } from "@/lib/store";
 import Link from "next/link";
 import { BuscaCpfForm } from "./busca-form";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 const NA_HOME = 10;
 
 export default function VendedorHome() {
-  const eu = usuarioAtual();
+  const eu = exigirUsuarioNaTela("vendedor");
   /*
    * "Minha carteira" passou a ser a carteira de alguém. Enquanto o pedido
    * guardava o nome do vendedor solto e a tela chamava `listarPedidos()` sem

@@ -2,7 +2,7 @@ import { AjudaDaTela, ItemAjuda } from "@/components/AjudaDaTela";
 import { ShellGestor } from "@/components/ShellGestor";
 import { GerenciadorHooks } from "./gerenciador";
 import { podePropor } from "@/lib/identidade";
-import { usuarioAtual } from "@/lib/identidade-server";
+import { exigirUsuarioNaTela } from "@/lib/identidade-server";
 import { listarHooks } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
  * endereço no mundo — não faz sentido existir em duas versões.
  */
 export default function PaginaFontes() {
-  const eu = usuarioAtual();
+  const eu = exigirUsuarioNaTela("gestor");
 
   return (
     <ShellGestor

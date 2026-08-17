@@ -1,5 +1,5 @@
 import { podePropor } from "@/lib/identidade";
-import { usuarioAtual } from "@/lib/identidade-server";
+import { exigirUsuarioNaTela } from "@/lib/identidade-server";
 import { listarHooks, obterPesquisa } from "@/lib/store";
 import { APRESENTACAO_PADRAO, desfechosDa } from "@/lib/types";
 import { notFound } from "next/navigation";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default function PaginaPesquisa({ params }: { params: { id: string } }) {
   const pesquisa = obterPesquisa(params.id);
   if (!pesquisa) return notFound();
-  const eu = usuarioAtual();
+  const eu = exigirUsuarioNaTela("gestor");
 
   /*
    * Sem o cromo do gestor: aqui a janela inteira é prancheta.

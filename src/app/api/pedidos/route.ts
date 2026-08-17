@@ -8,7 +8,7 @@ import {
 } from "@/lib/store";
 import { decidir, montarFatos } from "@/lib/engine";
 import { desfechosDa } from "@/lib/types";
-import { usuarioAtual } from "@/lib/identidade-server";
+import { exigirUsuario } from "@/lib/identidade-server";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,9 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { cpf, pesquisaId, modelo } = body;
 
-  const autor = usuarioAtual();
+  const quem = exigirUsuario();
+  if ("recusa" in quem) return quem.recusa;
+  const autor = quem.usuario;
 
   const pesquisa = obterPesquisa(pesquisaId);
   if (!pesquisa) {

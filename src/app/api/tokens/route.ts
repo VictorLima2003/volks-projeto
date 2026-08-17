@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { podePropor } from "@/lib/identidade";
-import { usuarioAtual } from "@/lib/identidade-server";
+import { exigirUsuario } from "@/lib/identidade-server";
 import { obterPesquisa } from "@/lib/store";
 import { TokenApi } from "@/lib/types";
 import { randomBytes } from "crypto";
@@ -17,7 +17,9 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   const { pesquisaId, nome } = (await req.json()) as { pesquisaId?: string; nome?: string };
 
-  const autor = usuarioAtual();
+  const sessao = exigirUsuario();
+  if ("recusa" in sessao) return sessao.recusa;
+  const autor = sessao.usuario;
   if (!podePropor(autor)) {
     return NextResponse.json({ erro: "sem_permissao" }, { status: 403 });
   }
@@ -48,7 +50,9 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const { pesquisaId, tokenId } = (await req.json()) as { pesquisaId?: string; tokenId?: string };
 
-  if (!podePropor(usuarioAtual())) {
+  const sessao = exigirUsuario();
+  if ("recusa" in sessao) return sessao.recusa;
+  if (!podePropor(sessao.usuario)) {
     return NextResponse.json({ erro: "sem_permissao" }, { status: 403 });
   }
   const pesquisa = pesquisaId ? obterPesquisa(pesquisaId) : undefined;

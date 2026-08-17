@@ -3,7 +3,7 @@ import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, LinkButton, Stat } from "@/components/ui";
 import { contarBlocos, versaoQueDecide } from "@/lib/engine";
 import { podePropor } from "@/lib/identidade";
-import { usuarioAtual } from "@/lib/identidade-server";
+import { exigirUsuarioNaTela } from "@/lib/identidade-server";
 import { listarHooks, listarPedidos, listarPesquisas, listarSessoes } from "@/lib/store";
 import Link from "next/link";
 import { ImportarPesquisa } from "./importar-pesquisa";
@@ -36,10 +36,10 @@ export default function Pesquisas() {
 
   return (
     <ShellGestor
-      title={`Olá, ${usuarioAtual().nome.split(" ")[0]}`}
+      title={`Olá, ${exigirUsuarioNaTela("gestor").nome.split(" ")[0]}`}
       action={
         <div className="flex flex-wrap items-center gap-3">
-          <ImportarPesquisa podeEditar={podePropor(usuarioAtual())} />
+          <ImportarPesquisa podeEditar={podePropor(exigirUsuarioNaTela("gestor"))} />
           <LinkButton href="/gestor/pesquisas/nova">+ Nova pesquisa</LinkButton>
         </div>
       }

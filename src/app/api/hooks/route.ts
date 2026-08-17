@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { salvarHooks } from "@/lib/store";
 import { Hook } from "@/lib/types";
 import { podePropor } from "@/lib/identidade";
-import { usuarioAtual } from "@/lib/identidade-server";
+import { exigirUsuario } from "@/lib/identidade-server";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,9 @@ const PREFIXOS_RESERVADOS = ["resposta"];
 export async function PUT(req: Request) {
   const { hooks } = (await req.json()) as { hooks: Hook[] };
 
-  const autor = usuarioAtual();
+  const sessao = exigirUsuario();
+  if ("recusa" in sessao) return sessao.recusa;
+  const autor = sessao.usuario;
   if (!podePropor(autor)) {
     return NextResponse.json(
       { erro: "sem_permissao", detalhe: `${autor.nome} não pode editar hooks.` },

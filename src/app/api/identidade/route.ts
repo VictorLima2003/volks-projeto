@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { COOKIE_USUARIO, USUARIOS } from "@/lib/identidade";
+import { areaDe, COOKIE_USUARIO, USUARIOS } from "@/lib/identidade";
 
 export const dynamic = "force-dynamic";
 
@@ -16,10 +16,13 @@ export async function POST(req: Request) {
     return res;
   }
 
-  if (!USUARIOS.some((u) => u.id === usuarioId)) {
+  const usuario = USUARIOS.find((u) => u.id === usuarioId);
+  if (!usuario) {
     return NextResponse.json({ erro: "usuario_invalido" }, { status: 400 });
   }
-  const res = NextResponse.json({ ok: true, usuarioId });
+  /* A área vai na resposta para a tela de entrada saber para onde mandar sem
+     ter que conhecer os papéis de cada um. */
+  const res = NextResponse.json({ ok: true, usuarioId, area: areaDe(usuario) });
   res.cookies.set(COOKIE_USUARIO, usuarioId, {
     path: "/",
     httpOnly: false,

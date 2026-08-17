@@ -5,7 +5,7 @@ import {
   type Tom,
 } from "@/components/ResultadoDecisao";
 import { ShellFluxo } from "@/components/ShellFluxo";
-import { usuarioAtual } from "@/lib/identidade-server";
+import { exigirUsuarioNaTela } from "@/lib/identidade-server";
 import { Badge, Card, LinkButton } from "@/components/ui";
 import { ROTULO_PEDIDO_STATUS } from "@/lib/catalogo";
 import { criteriosLegiveis, mapaDeRotulos, rotularFato, todasAsPerguntas } from "@/lib/engine";
@@ -48,7 +48,7 @@ export default function Consulta({ searchParams }: { searchParams: { cpf?: strin
   const nomeDoRespondente = fatosColetados
     .map(([, campos]) => campos.nome)
     .find((n) => typeof n === "string" && n.trim());
-  const eu = usuarioAtual();
+  const eu = exigirUsuarioNaTela("vendedor");
   const pedidos = pedidosPorCpf(cpf);
   const pesquisas = listarPesquisas();
   const hooksPorPrefixo = new Map(

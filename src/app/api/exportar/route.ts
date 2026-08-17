@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { linhasDeSubmissao, paraCsv } from "@/lib/exportacao";
 import { podePropor } from "@/lib/identidade";
-import { usuarioAtual } from "@/lib/identidade-server";
+import { exigirUsuario } from "@/lib/identidade-server";
 import { listarPesquisas, listarSessoes } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,9 @@ export const dynamic = "force-dynamic";
  * botão que exportasse sempre tudo obrigaria a filtrar de novo na planilha.
  */
 export async function GET(req: Request) {
-  if (!podePropor(usuarioAtual())) {
+  const sessao = exigirUsuario();
+  if ("recusa" in sessao) return sessao.recusa;
+  if (!podePropor(sessao.usuario)) {
     return NextResponse.json({ erro: "sem_permissao" }, { status: 403 });
   }
 

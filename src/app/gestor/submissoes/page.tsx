@@ -5,7 +5,7 @@ import { rotularFato, mapaDeRotulos } from "@/lib/engine";
 import { listarHooks, listarPesquisas, listarSessoes } from "@/lib/store";
 import { acharDesfecho, desfechosDa, Pesquisa, SessaoMotorista } from "@/lib/types";
 import { podePropor } from "@/lib/identidade";
-import { usuarioAtual } from "@/lib/identidade-server";
+import { exigirUsuarioNaTela } from "@/lib/identidade-server";
 import Link from "next/link";
 import { PainelAcesso } from "./painel-acesso";
 
@@ -154,7 +154,7 @@ export default function Submissoes({
           pesquisaNome={pesquisaEscolhida.nome}
           tokens={pesquisaEscolhida.tokens ?? []}
           linkCsv={`/api/exportar?${recorte}`}
-          podeEditar={podePropor(usuarioAtual())}
+          podeEditar={podePropor(exigirUsuarioNaTela("gestor"))}
         />
       ) : (
         <div className="flex flex-wrap items-center gap-3 mb-6">

@@ -1,6 +1,7 @@
 import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, Stat, Table, TD, TH, THead, TR } from "@/components/ui";
-import { usuarioPorId } from "@/lib/identidade";
+import { nomeDeUsuario } from "@/lib/identidade";
+import { exigirUsuarioNaTela } from "@/lib/identidade-server";
 import { listarPedidos, listarSessoes, obterPesquisa } from "@/lib/store";
 import { desfechosDa } from "@/lib/types";
 import Link from "next/link";
@@ -22,6 +23,7 @@ export const dynamic = "force-dynamic";
  * nomes, e a tela precisa continuar servindo.
  */
 export default function IndicadoresDaPesquisa({ params }: { params: { id: string } }) {
+  exigirUsuarioNaTela("gestor");
   const pesquisa = obterPesquisa(params.id);
   if (!pesquisa) notFound();
 
@@ -203,12 +205,12 @@ export default function IndicadoresDaPesquisa({ params }: { params: { id: string
                 </THead>
                 <tbody>
                   {[...porVendedor.entries()].map(([id, v]) => {
-                    const u = usuarioPorId(id);
+                    const u = nomeDeUsuario(id);
                     return (
                       <TR key={id}>
                         <TD>
                           <div className="text-sm">{u.nome}</div>
-                          <div className="text-xs text-ink-600">{u.concessionaria ?? u.area}</div>
+                          <div className="text-xs text-ink-600">{u.onde}</div>
                         </TD>
                         <TD className="text-right">{v.pedidos}</TD>
                         <TD className="text-right">{v.concluidos}</TD>

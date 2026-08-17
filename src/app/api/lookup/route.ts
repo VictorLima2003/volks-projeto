@@ -25,7 +25,9 @@ export async function GET(req: Request) {
    * continuaria respondendo por ele. Quem monta a pesquisa passa, porque é
    * assim que se confere antes de publicar.
    */
-  const previa = searchParams.get("previa") === "1" && podePropor(usuarioAtual());
+  /* Sem ninguém entrado não há prévia: `podePropor` de `undefined` é não. */
+  const quem = usuarioAtual();
+  const previa = searchParams.get("previa") === "1" && !!quem && podePropor(quem);
   if (pesquisa.status !== "ativa" && !previa) {
     return NextResponse.json(
       { erro: "pesquisa_fora_do_ar", status: pesquisa.status },

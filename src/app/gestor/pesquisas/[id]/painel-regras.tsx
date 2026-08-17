@@ -2,7 +2,7 @@
 
 import { Badge, Button, Card } from "@/components/ui";
 import { diffRuleSets, explicarRegra } from "@/lib/engine";
-import { usuarioPorId } from "@/lib/identidade";
+import { nomeDeUsuario } from "@/lib/identidade";
 import { acharDesfecho, Desfecho, RuleSet } from "@/lib/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -62,7 +62,7 @@ export function PainelRegras({
         <div className="border border-signal-warn/45 bg-signal-warn/10 rounded-md p-6 mb-8 flex flex-wrap items-center gap-4">
           <Badge tone="warn">v{pendente.versao} em revisão</Badge>
           <span className="text-base text-ink-800">
-            Proposta por {usuarioPorId(pendente.propostoPor).nome}. Só entra em produção depois de
+            Proposta por {nomeDeUsuario(pendente.propostoPor).nome}. Só entra em produção depois de
             publicada por outra pessoa.
           </span>
           <Link
@@ -138,11 +138,11 @@ export function PainelRegras({
             regras: v.regras.length,
             ativo: v.id === versaoAtivaId,
             status: v.status,
-            propostoPor: usuarioPorId(v.propostoPor).nome,
+            propostoPor: nomeDeUsuario(v.propostoPor).nome,
             propostaEm: v.propostaEm,
-            publicadoPor: v.publicadoPor ? usuarioPorId(v.publicadoPor).nome : undefined,
+            publicadoPor: v.publicadoPor ? nomeDeUsuario(v.publicadoPor).nome : undefined,
             publicadoEm: v.publicadoEm,
-            recusadoPor: v.recusadoPor ? usuarioPorId(v.recusadoPor).nome : undefined,
+            recusadoPor: v.recusadoPor ? nomeDeUsuario(v.recusadoPor).nome : undefined,
             motivoRecusa: v.motivoRecusa,
           }))}
         />
