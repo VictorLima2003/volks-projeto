@@ -2,9 +2,11 @@ import { AjudaDaTela, ItemAjuda } from "@/components/AjudaDaTela";
 import { ShellGestor } from "@/components/ShellGestor";
 import { Badge, Card, LinkButton, Stat } from "@/components/ui";
 import { contarBlocos, versaoQueDecide } from "@/lib/engine";
+import { podePropor } from "@/lib/identidade";
 import { usuarioAtual } from "@/lib/identidade-server";
 import { listarHooks, listarPedidos, listarPesquisas, listarSessoes } from "@/lib/store";
 import Link from "next/link";
+import { ImportarPesquisa } from "./importar-pesquisa";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +37,12 @@ export default function Pesquisas() {
   return (
     <ShellGestor
       title={`Olá, ${usuarioAtual().nome.split(" ")[0]}`}
-      action={<LinkButton href="/gestor/pesquisas/nova">+ Nova pesquisa</LinkButton>}
+      action={
+        <div className="flex flex-wrap items-center gap-3">
+          <ImportarPesquisa podeEditar={podePropor(usuarioAtual())} />
+          <LinkButton href="/gestor/pesquisas/nova">+ Nova pesquisa</LinkButton>
+        </div>
+      }
       ajuda={
         <AjudaDaTela titulo="Pesquisas">
           <p>

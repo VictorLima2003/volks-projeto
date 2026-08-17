@@ -152,6 +152,12 @@ No escopo do código: os parâmetros que você definiu, mais `csv()`, `log()`, `
 
 Editado em `/gestor/fontes` com Monaco (o editor do VS Code).
 
+Uma **pesquisa** também viaja por arquivo: **Exportar**, no popover do nome dentro do construtor,
+baixa o que está na tela — capa, blocos, desfechos e os critérios que decidem. **Importar pesquisa**,
+na lista, cria sempre uma **nova** em rascunho, nunca sobrescreve, e avisa quando o arquivo cita
+fonte que não existe nesta instalação. As fontes não vão dentro da pesquisa: são da instalação, e
+o código delas pode ler bases que só existem lá.
+
 Uma fonte sai e entra por arquivo: **Exportar** baixa `fonte-<prefixo>.json` com código,
 parâmetros, rótulos e anexos; **Importar JSON** põe o arquivo na tela, desligado, para ser lido
 antes de valer. O arquivo se identifica em `formato`, então trocar pesquisa por fonte é recusado

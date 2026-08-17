@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { criarPesquisa, obterPesquisa } from "@/lib/store";
+import { criarPesquisa, listarHooks, obterPesquisa, salvarPesquisa } from "@/lib/store";
+import { fontesCitadas, PesquisaPortavel } from "@/lib/portabilidade";
 import {
   APRESENTACAO_PADRAO,
   Apresentacao,
@@ -16,6 +17,7 @@ import {
   PERGUNTA_DA_CAPA_PADRAO,
   Pesquisa,
   PesquisaStatus,
+  RuleSet,
 } from "@/lib/types";
 import { temErro, validarPesquisa } from "@/lib/validacao-pesquisa";
 import { podePropor } from "@/lib/identidade";
@@ -105,9 +107,20 @@ function normalizar(blocos: Bloco[]): Bloco[] {
   });
 }
 
-/** Cria uma pesquisa. Nasce vazia e vai direto para o construtor. */
+/**
+ * Cria uma pesquisa: vazia, ou a partir de um arquivo.
+ *
+ * Importar **sempre cria uma nova**, com id novo e em rascunho. Nunca
+ * sobrescreve: um arquivo errado apagaria trabalho de outra pessoa, e a pesquisa
+ * de destino nem apareceria na conversa — quem importa está pensando no arquivo,
+ * não no que já existe.
+ */
 export async function POST(req: Request) {
-  const { nome, descricao } = (await req.json()) as { nome?: string; descricao?: string };
+  const { nome, descricao, importada } = (await req.json()) as {
+    nome?: string;
+    descricao?: string;
+    importada?: PesquisaPortavel;
+  };
 
   const autor = usuarioAtual();
   if (!podePropor(autor)) {
@@ -116,6 +129,9 @@ export async function POST(req: Request) {
       { status: 403 },
     );
   }
+
+  if (importada) return importar(importada, autor.id);
+
   if (!nome || !nome.trim()) {
     return NextResponse.json(
       { erro: "sem_nome", detalhe: "Dê um nome à pesquisa." },
@@ -125,6 +141,85 @@ export async function POST(req: Request) {
 
   const pesquisa = criarPesquisa(nome.trim(), descricao?.trim() || undefined);
   return NextResponse.json({ id: pesquisa.id });
+}
+
+function importar(p: PesquisaPortavel, autorId: string) {
+  /*
+   * A mesma validação da tela de montagem, e não uma segunda escrita aqui.
+   * Um arquivo pode trazer árvore que a interface nunca deixaria montar — bloco
+   * depois de um fim de caminho, condicional sem condição — e isso precisa ser
+   * barrado na porta, não descoberto por quem for responder.
+   */
+  const problemas = validarPesquisa(p.blocos);
+  if (temErro(problemas)) {
+    return NextResponse.json(
+      {
+        erro: "pesquisa_invalida",
+        detalhe: "A pesquisa do arquivo tem erro de montagem e não foi importada.",
+        problemas: problemas.filter((x) => x.gravidade === "erro"),
+      },
+      { status: 400 },
+    );
+  }
+
+  const pesquisa = criarPesquisa(p.nome, p.descricao);
+  pesquisa.chamada = p.chamada;
+  pesquisa.blocos = p.blocos;
+  if (p.apresentacao) pesquisa.apresentacao = p.apresentacao;
+  if (p.desfechos?.length) pesquisa.desfechos = p.desfechos;
+
+  if (p.regras?.length) {
+    const agora = new Date().toISOString();
+    /*
+     * A régua entra como v1 **já valendo**, e não como proposta em revisão.
+     * Ela já foi revisada em algum lugar; obrigar uma revisão aqui deixaria a
+     * pesquisa importada sem decidir nada até alguém aprovar o que veio pronto.
+     * A trilha desta instalação começa agora, com quem importou.
+     */
+    const rs: RuleSet = {
+      id: `rs_${Date.now().toString(36)}`,
+      versao: 1,
+      criadoEm: agora,
+      criadoPor: autorId,
+      descricao: p.descricaoDasRegras ?? "Critérios vindos de arquivo.",
+      regras: p.regras,
+      ativo: true,
+      status: "ativo",
+      propostoPor: autorId,
+      propostaEm: agora,
+      publicadoPor: autorId,
+      publicadoEm: agora,
+    };
+    pesquisa.versoes = [rs];
+    pesquisa.versaoAtivaId = rs.id;
+  }
+
+  salvarPesquisa(pesquisa);
+
+  /*
+   * As fontes não viajam com a pesquisa: são da instalação, com código que lê
+   * bases que talvez só existam lá. Faltando alguma, a pesquisa entra parecendo
+   * inteira e só falha quando alguém percorre a jornada — daí o aviso na hora.
+   */
+  const citadas = fontesCitadas(p);
+  const hooks = listarHooks();
+  const avisos: string[] = [];
+
+  const semHook = citadas.hookIds.filter((id) => !hooks.some((h) => h.id === id));
+  if (semHook.length) {
+    avisos.push(
+      `${semHook.length} bloco(s) de consulta apontam para fonte que não existe aqui. Importe a fonte e reaponte o bloco.`,
+    );
+  }
+
+  const semPrefixo = citadas.prefixos.filter((pre) => !hooks.some((h) => h.prefixo === pre));
+  if (semPrefixo.length) {
+    avisos.push(
+      `As condições leem ${semPrefixo.map((s) => `"${s}.*"`).join(", ")}, e nenhuma fonte daqui tem esse prefixo.`,
+    );
+  }
+
+  return NextResponse.json({ id: pesquisa.id, avisos });
 }
 
 /**

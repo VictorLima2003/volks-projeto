@@ -1,7 +1,7 @@
 "use client";
 
 import { useAviso } from "@/components/Avisos";
-import { contarBlocos } from "@/lib/engine";
+import { contarBlocos, versaoQueDecide } from "@/lib/engine";
 import { Apresentacao, Bloco, Desfecho, Hook, PesquisaStatus, RuleSet } from "@/lib/types";
 import {
   atualizarBloco,
@@ -25,6 +25,7 @@ import { PainelDesfechos } from "./painel-desfechos";
 import { PainelPublicacao } from "./painel-publicacao";
 import { Ancora, PainelTipos } from "./painel-tipos";
 import { PainelRegras } from "./painel-regras";
+import { baixarTexto, pesquisaParaArquivo } from "@/lib/portabilidade";
 import { CartaoPesquisa } from "./popover-pesquisa";
 import { SimuladorFluxo } from "./simulador-fluxo";
 
@@ -515,6 +516,27 @@ export function ConstrutorPesquisa({
           pesquisaId={pesquisaId}
           inicial={{ nome: configuracao.nome }}
           podeEditar={podeEditar}
+          /*
+           * Exporta o que está na tela, e não o que está gravado no servidor.
+           * Quem clica em exportar acabou de montar alguma coisa; baixar a
+           * versão salva entregaria um arquivo sem o trabalho da última meia
+           * hora, e sem nada avisando.
+           */
+          aoExportar={() =>
+            baixarTexto(
+              `pesquisa-${configuracao.nome.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "sem-nome"}.json`,
+              pesquisaParaArquivo({
+                nome: configuracao.nome,
+                descricao: configuracao.descricao,
+                chamada: configuracao.chamada,
+                apresentacao,
+                blocos,
+                desfechos,
+                regras: versaoQueDecide(versoes, versaoAtivaId)?.regras,
+                descricaoDasRegras: versaoQueDecide(versoes, versaoAtivaId)?.descricao,
+              }),
+            )
+          }
         />
 
         {/* O modo de edição fica junto do nome, à esquerda: é como se monta.

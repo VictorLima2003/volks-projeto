@@ -1,4 +1,15 @@
-import { AnexoHook, Hook, ParametroHook } from "./types";
+import {
+  AnexoHook,
+  Apresentacao,
+  Bloco,
+  Condicao,
+  Desfecho,
+  Hook,
+  ParametroHook,
+  Regra,
+  ehCondicional,
+  ehConsulta,
+} from "./types";
 
 /**
  * Levar uma peça de uma instalação para outra, por arquivo.
@@ -130,6 +141,122 @@ export function fonteDeArquivo(texto: string): Resultado<Omit<Hook, "id">> {
       codigo,
       anexos,
       ativo: false,
+    },
+  };
+}
+
+// --- Pesquisa ---------------------------------------------------------------
+
+export const FORMATO_PESQUISA = "pesquisa-volkswagen@1";
+
+/** O que uma pesquisa carrega ao viajar. Sem id, sem situação, sem histórico. */
+export interface PesquisaPortavel {
+  nome: string;
+  descricao?: string;
+  chamada?: string;
+  apresentacao?: Apresentacao;
+  blocos: Bloco[];
+  desfechos?: Desfecho[];
+  /**
+   * Os critérios que decidem, e **uma** versão só.
+   *
+   * Levar o histórico de versões junto levaria também quem propôs, quem
+   * publicou e quando — a trilha de auditoria de outra instalação, com nomes de
+   * gente que talvez nem trabalhe aqui. O que viaja é a régua; a trilha começa
+   * do zero em quem recebe, e é dele daí em diante.
+   */
+  regras?: Regra[];
+  descricaoDasRegras?: string;
+}
+
+export function pesquisaParaArquivo(p: PesquisaPortavel): string {
+  return JSON.stringify({ formato: FORMATO_PESQUISA, pesquisa: p }, null, 2);
+}
+
+/**
+ * As fontes que esta pesquisa precisa para funcionar.
+ *
+ * Uma pesquisa não carrega os hooks junto: eles são da instalação, com código
+ * que pode ler bases que só existem lá. Mas ela **depende** deles — um bloco de
+ * consulta aponta para um `hookId`, e cada regra lê `<prefixo>.campo`. Sem
+ * dizer isso na importação, a pesquisa entra parecendo inteira e só falha
+ * quando alguém percorre a jornada.
+ */
+export function fontesCitadas(p: PesquisaPortavel): { hookIds: string[]; prefixos: string[] } {
+  const hookIds = new Set<string>();
+  const prefixos = new Set<string>();
+
+  const daCondicao = (c: Condicao | undefined) => {
+    if (!c) return;
+    /* O prefixo é o que vem antes do primeiro ponto, e `resposta` não conta:
+       esse não vem de fonte nenhuma, vem do próprio questionário. */
+    const raiz = c.fato?.split(".")[0];
+    if (raiz && raiz !== "resposta") prefixos.add(raiz);
+    for (const sub of [...(c.todas ?? []), ...(c.qualquer ?? [])]) daCondicao(sub);
+  };
+
+  const andar = (blocos: Bloco[]) => {
+    for (const b of blocos) {
+      if (ehConsulta(b)) hookIds.add(b.hookId);
+      if (ehCondicional(b)) {
+        daCondicao(b.condicao);
+        andar(b.entao);
+        andar(b.senao);
+      }
+    }
+  };
+
+  andar(p.blocos);
+  for (const r of p.regras ?? []) daCondicao(r.condicao);
+
+  return { hookIds: [...hookIds], prefixos: [...prefixos] };
+}
+
+export function pesquisaDeArquivo(texto: string): Resultado<PesquisaPortavel> {
+  let cru: unknown;
+  try {
+    cru = JSON.parse(texto);
+  } catch {
+    return { ok: false, erro: "O arquivo não é um JSON válido." };
+  }
+
+  const env = (cru ?? {}) as { formato?: unknown; pesquisa?: unknown };
+  if (env.formato !== FORMATO_PESQUISA) {
+    return {
+      ok: false,
+      erro: `Este arquivo é "${String(env.formato ?? "sem formato")}", e aqui se importa "${FORMATO_PESQUISA}".`,
+    };
+  }
+
+  const p = env.pesquisa as Partial<PesquisaPortavel> | undefined;
+  if (!p || typeof p !== "object") {
+    return { ok: false, erro: "O arquivo tem a marca de pesquisa, mas não traz a pesquisa." };
+  }
+  if (typeof p.nome !== "string" || !p.nome.trim()) {
+    return { ok: false, erro: "A pesquisa no arquivo não tem nome." };
+  }
+  if (!Array.isArray(p.blocos)) {
+    return { ok: false, erro: "A pesquisa no arquivo não tem blocos." };
+  }
+
+  /*
+   * A árvore não é conferida campo a campo aqui: quem faz isso é
+   * `validarPesquisa`, a mesma função que a tela de montagem usa. Repetir a
+   * conferência daria duas listas de regras para manter em dia, e a segunda
+   * envelheceria calada.
+   */
+  return {
+    ok: true,
+    valor: {
+      nome: p.nome.trim(),
+      descricao: typeof p.descricao === "string" ? p.descricao : undefined,
+      chamada: typeof p.chamada === "string" ? p.chamada : undefined,
+      apresentacao: p.apresentacao,
+      blocos: p.blocos,
+      desfechos: Array.isArray(p.desfechos) ? p.desfechos : undefined,
+      regras: Array.isArray(p.regras) ? p.regras : undefined,
+      descricaoDasRegras:
+        typeof p.descricaoDasRegras === "string" ? p.descricaoDasRegras : undefined,
     },
   };
 }

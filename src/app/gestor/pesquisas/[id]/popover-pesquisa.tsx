@@ -16,10 +16,13 @@ export function CartaoPesquisa({
   pesquisaId,
   inicial,
   podeEditar,
+  aoExportar,
 }: {
   pesquisaId: string;
   inicial: { nome: string };
   podeEditar: boolean;
+  /** Baixa a pesquisa como arquivo. Quem monta o conteúdo é o construtor. */
+  aoExportar: () => void;
 }) {
   const router = useRouter();
   const { avisar } = useAviso();
@@ -120,7 +123,7 @@ export function CartaoPesquisa({
              * seguida tirava a pesquisa do ar sem perceber, porque o `select`
              * ainda tinha a situação de quando a tela abriu.
              */}
-            <div className="mt-4 pt-3 border-t hairline">
+            <div className="mt-4 pt-3 border-t hairline flex items-center gap-2">
               <button
                 type="button"
                 onClick={salvar}
@@ -129,6 +132,23 @@ export function CartaoPesquisa({
                            hover:opacity-90 transition disabled:opacity-40"
               >
                 {salvando ? "Salvando..." : "Salvar"}
+              </button>
+
+              {/* Exportar mora aqui, junto do nome, porque é o lugar de "o que
+                  este arquivo é" — o mesmo popover onde as ferramentas de canvas
+                  guardam essa informação. Não depende de poder editar: levar uma
+                  cópia embora não muda nada aqui dentro. */}
+              <button
+                type="button"
+                onClick={() => {
+                  aoExportar();
+                  setAberto(false);
+                  avisar("Pesquisa exportada. As fontes não vão no arquivo.", "go");
+                }}
+                className="h-9 px-4 rounded-full border hairline-strong text-[13px] font-semibold
+                           text-ink-800 hover:border-vw-deep hover:text-vw-deep transition"
+              >
+                Exportar
               </button>
             </div>
           </div>
