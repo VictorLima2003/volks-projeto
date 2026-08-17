@@ -127,12 +127,6 @@ export default function Pesquisas() {
                   </Badge>
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <Link
-                    href={`/gestor/pesquisas/${p.id}`}
-                    className="text-sm text-ink-700 hover:text-vw-deep underline decoration-ink-300 hover:decoration-vw-deep transition"
-                  >
-                    Construtor
-                  </Link>
                   {!rs && <span className="text-sm text-ink-600">Sem regras · só coleta</span>}
                   {/* O link que se compartilha com quem responde. Fora do ar ele
                       leva `previa=1`, senão esta linha da lista mandaria o próprio
@@ -169,13 +163,30 @@ export default function Pesquisas() {
                 </Link>
               </div>
 
-              <LinkButton
-                href={`/gestor/pesquisas/${p.id}/indicadores`}
-                variant="secondary"
-                className="ml-auto shrink-0"
-              >
-                Indicadores
-              </LinkButton>
+              {/*
+               * Construir é o que se vem fazer aqui; indicadores é consulta.
+               *
+               * Os dois no mesmo tamanho faziam a linha oferecer duas portas de
+               * igual peso, e a mais usada não era a que chamava. Agora o
+               * primário leva ao construtor e a leitura vai numa pílula
+               * menor, ao lado.
+               *
+               * A pílula menor é escrita à mão em vez de `LinkButton` com
+               * `className`: o `cn` daqui é concatenação simples, então
+               * `h-12` e `h-9` na mesma string deixam a altura por conta da
+               * ordem da folha gerada, e não do que se pediu.
+               */}
+              <div className="ml-auto flex shrink-0 items-center gap-3">
+                <Link
+                  href={`/gestor/pesquisas/${p.id}/indicadores`}
+                  className="inline-flex h-9 items-center rounded-full border hairline px-4
+                             text-sm font-semibold text-ink-800 transition
+                             hover:border-vw-deep hover:text-vw-deep"
+                >
+                  Indicadores
+                </Link>
+                <LinkButton href={`/gestor/pesquisas/${p.id}`}>Construtor</LinkButton>
+              </div>
             </div>
           );
         })}
