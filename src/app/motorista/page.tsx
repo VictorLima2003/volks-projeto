@@ -161,6 +161,20 @@ export default function MotoristaHome({
                       previa={previa}
                     />
                   )}
+
+                  {/*
+                   * A nota fica no cartão, e não dentro de cada uma das duas
+                   * entradas: ela vale igual para quem digita um dado e para
+                   * quem só clica em começar, e escrita uma vez não tem como as
+                   * duas versões divergirem.
+                   *
+                   * `ink-600` é o piso de contraste do sistema. Neste corpo o
+                   * piso não é folga: 10px é o menor tamanho da interface e
+                   * qualquer tom mais claro sai de 4.5:1.
+                   */}
+                  <p className="mt-4 text-[10px] leading-relaxed text-ink-600">
+                    Ao prosseguir, você concorda com os termos de uso e a política de privacidade.
+                  </p>
                 </div>
               </div>
             </div>
