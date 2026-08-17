@@ -458,6 +458,27 @@ const regrasV1: Regra[] = [
   },
 ];
 
+/**
+ * A oferta de SP não pede autorização; a do Rio pede.
+ *
+ * Duas peneiras, e não uma segunda cópia dos blocos e das regras escritas à
+ * mão: o que muda entre as duas pesquisas é a ausência de três blocos e de um
+ * critério, e manter isso como filtro deixa óbvio o que foi tirado — e deixa a
+ * pesquisa do Rio continuar sendo o exemplo de um fluxo com consentimento.
+ *
+ * As quatro pontas do consentimento saem juntas de propósito. Tirar só a
+ * pergunta seria pior que não tirar nada: a regra do servidor recusa por
+ * `resposta.consentimento` vazio, e sem ninguém para responder ela, **toda**
+ * submissão de SP viraria "sem autorização para consultar".
+ *
+ * O condicional leva o fim junto, porque o fim mora dentro do `entao` dele.
+ */
+const SAI_COM_O_CONSENTIMENTO = ["q_consent", "cond_sem_consentimento"];
+
+const blocosSemConsentimento = blocosPadrao.filter(
+  (b) => !SAI_COM_O_CONSENTIMENTO.includes(b.id),
+);
+
 const ruleSetV1: RuleSet = {
   id: "rs_v1",
   versao: 1,
@@ -496,11 +517,16 @@ export const PESQUISAS_SEED: Pesquisa[] = [
     descricao:
       "Você dirige por aplicativo e a Volkswagen já tem os dados que precisa conferir. Digite seu CPF e veja a resposta nesta mesma tela.",
     status: "ativa",
-    blocos: JSON.parse(JSON.stringify(blocosPadrao)),
-    /* Cada pesquisa carrega as próprias versões. As duas nascem iguais porque
-       são a mesma oferta em duas praças — e a partir daqui cada uma segue seu
-       caminho sem mexer na outra. */
-    versoes: [ruleSetV1],
+    blocos: JSON.parse(JSON.stringify(blocosSemConsentimento)),
+    /* Cada pesquisa carrega as próprias versões, e aqui elas já não nascem
+       iguais: a de SP vai sem o critério de autorização, porque a pergunta que
+       o alimentava não existe mais neste fluxo. */
+    versoes: [
+      {
+        ...ruleSetV1,
+        regras: regrasV1.filter((r) => r.id !== "r_sem_consentimento"),
+      },
+    ],
     versaoAtivaId: ruleSetV1.id,
     chamada: "T-Cross, Nivus ou Polo Track na condição de motorista",
     criadaEm: "2026-05-20T14:00:00Z",
@@ -574,7 +600,7 @@ export const SESSOES_SEED: SessaoMotorista[] = [
       uber: { encontrado: true, nome: "Marcos Andrade", cidade: "São Paulo", uf: "SP", mesesUber: 14, corridas: 2380, status: "ativo", rating: 4.92 },
       credito: { encontrado: true, score: 842, temRestricao: false, limite: 68000 },
     },
-    respostas: { consentimento: true, modelo: "T-Cross", concessionaria: "VW Barra Funda (SP)", canalContato: "WhatsApp" },
+    respostas: { modelo: "T-Cross", concessionaria: "VW Barra Funda (SP)", canalContato: "WhatsApp" },
     resultado: {
       tipo: "elegivel",
       efeito: "libera",
@@ -598,7 +624,7 @@ export const SESSOES_SEED: SessaoMotorista[] = [
       uber: { encontrado: true, nome: "Carla Mendes", cidade: "Belo Horizonte", uf: "MG", mesesUber: 4, corridas: 320, status: "ativo", rating: 4.71 },
       credito: { encontrado: true, score: 530, temRestricao: true, limite: 0 },
     },
-    respostas: { consentimento: true },
+    respostas: {},
     resultado: {
       tipo: "nao_elegivel",
       efeito: "recusa",
