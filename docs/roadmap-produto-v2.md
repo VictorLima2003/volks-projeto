@@ -228,7 +228,12 @@ São Paulo, que seguiu na v1.
 | 4c | Separar os dois sentidos de "aprovação": governança virou **revisão** | feito | 12/08/2026 |
 | 5 | Submissões: 100% delas, com estado técnico e a sessão nascendo no início | feito | 12/08/2026 |
 | 6 | Exportação: CSV do recorte + API por credencial da pesquisa | feito | 12/08/2026 |
-| 7 | Dashboard por pesquisa | fase posterior | — |
+| 7a | Histórico sintético: o gerador sorteia fatos e o motor decide | feito | 17/08/2026 |
+| 7b | `analise.ts`: recorte e agregação puros, servindo tela, CSV e API | feito | 17/08/2026 |
+| 7c | Gráficos próprios em SVG (rosca, barras, colunas, linha, cruzada) | feito | 17/08/2026 |
+| 7d | Indicadores em Bento, com filtros na URL e comparação de período | feito | 17/08/2026 |
+| 7e | CSV do recorte inteiro + `/api/publico/agregado` + exemplos colar-e-usar | feito | 17/08/2026 |
+| 7f | Visualizações montadas pelo gestor e guardadas na pesquisa | a fazer | — |
 | — | Fluxograma como grafo de verdade (caminhos que se juntam) | fase 2 | — |
 
 ### Duas ordens que não são negociáveis

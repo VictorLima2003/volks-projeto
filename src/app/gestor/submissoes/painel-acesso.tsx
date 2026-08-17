@@ -40,6 +40,7 @@ export function PainelAcesso({
   useEffect(() => setOrigem(window.location.origin), []);
 
   const endpoint = `${origem}/api/publico/submissoes?pesquisa=${pesquisaId}`;
+  const agregado = `${origem}/api/publico/agregado?pesquisa=${pesquisaId}`;
 
   async function criar() {
     setCriando(true);
@@ -98,21 +99,72 @@ export function PainelAcesso({
 
       {aberto && (
         <div className="mt-6 pt-6 border-t hairline space-y-6">
+          {/*
+           * Duas rotas, e a diferença entre elas é a pergunta que respondem.
+           *
+           * Só a de linha cruas existia, e quem queria a série por semana tinha
+           * que baixar milhares de registros para contá-los do outro lado — e aí
+           * cada consumidor reimplementava "o que conta como concluída", com o
+           * painel virando só mais uma opinião entre três.
+           */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <Rota
+              id="endpoint-submissoes"
+              titulo="Linha por submissão"
+              descricao="O dado cru, uma linha por pessoa. Aceita &formato=csv."
+              url={endpoint}
+            />
+            <Rota
+              id="endpoint-agregado"
+              titulo="Números já somados"
+              descricao="Resumo, funil, distribuição e série no tempo — as mesmas contas da tela."
+              url={agregado}
+            />
+          </div>
+
+          <p className="text-sm text-ink-600 -mt-2">
+            As duas aceitam <span className="mono">de</span>, <span className="mono">ate</span>,{" "}
+            <span className="mono">desfecho</span>, <span className="mono">efeito</span>,{" "}
+            <span className="mono">estado</span> e <span className="mono">busca</span> — o mesmo
+            recorte da tela. O token vai no cabeçalho{" "}
+            <span className="mono">Authorization: Bearer …</span>, nunca na URL: endereço com
+            segredo dentro vaza no histórico, no log e no print.
+          </p>
+
           <div>
-            <Label>Endereço</Label>
-            <div
-              id="endpoint-da-pesquisa"
-              className="text-sm break-all border hairline rounded-md bg-ink-100 px-3 py-2.5 mono"
-            >
-              {endpoint}
+            <h3 className="text-sm font-semibold mb-3">Pronto para colar</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              <Exemplo
+                id="exemplo-python"
+                linguagem="Python · pandas"
+                codigo={`import io, requests
+import pandas as pd
+
+TOKEN = "<cole a credencial>"
+r = requests.get(
+    "${endpoint}",
+    params={"de": "2026-01-01", "formato": "csv"},
+    headers={"Authorization": f"Bearer {TOKEN}"},
+)
+df = pd.read_csv(io.StringIO(r.text), sep=";")`}
+              />
+              <Exemplo
+                id="exemplo-r"
+                linguagem="R"
+                codigo={`library(httr); library(readr)
+
+r <- GET("${endpoint}",
+         query = list(formato = "csv"),
+         add_headers(Authorization = paste("Bearer", Sys.getenv("VW_TOKEN"))))
+df <- read_delim(content(r, "text"), delim = ";")`}
+              />
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <BotaoCopiar valor={endpoint} alvoId="endpoint-da-pesquisa" compacto />
-              <span className="text-sm text-ink-600">
-                Aceita <span className="mono">&amp;formato=csv</span>. O token vai no cabeçalho{" "}
-                <span className="mono">Authorization: Bearer …</span>, nunca na URL.
-              </span>
-            </div>
+            <p className="text-sm text-ink-600 mt-3 leading-snug">
+              O CSV sai com <span className="mono">;</span> e BOM porque o Excel em português lê{" "}
+              <span className="mono">,</span> como separador decimal e joga a linha inteira numa
+              célula só. No Power BI, use <em>Obter dados › Web › Avançado</em> para pôr o
+              cabeçalho — o campo simples não aceita cabeçalho e o token não vai na URL.
+            </p>
           </div>
 
           <div>
@@ -180,5 +232,52 @@ export function PainelAcesso({
         </div>
       )}
     </Card>
+  );
+}
+
+/** Uma rota, com o endereço copiável e o que ela responde. */
+function Rota({
+  id,
+  titulo,
+  descricao,
+  url,
+}: {
+  id: string;
+  titulo: string;
+  descricao: string;
+  url: string;
+}) {
+  return (
+    <div className="border hairline rounded-md p-4">
+      <div className="text-sm font-semibold">{titulo}</div>
+      <p className="text-sm text-ink-600 mt-1 mb-3">{descricao}</p>
+      <div id={id} className="text-xs break-all border hairline rounded-sm bg-ink-100 px-3 py-2 mono">
+        {url}
+      </div>
+      <div className="mt-2">
+        <BotaoCopiar valor={url} alvoId={id} compacto />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Um trecho pronto para colar.
+ *
+ * `<pre>` com rolagem própria: código quebrado em linha automática deixa de ser
+ * colável, e uma linha longa que empurra a largura do cartão estraga o resto da
+ * tela — daí o `overflow-x-auto` aqui dentro e não na página.
+ */
+function Exemplo({ id, linguagem, codigo }: { id: string; linguagem: string; codigo: string }) {
+  return (
+    <div className="border hairline rounded-md overflow-hidden">
+      <div className="flex items-center justify-between gap-3 px-4 py-2.5 bg-ink-100 border-b hairline">
+        <span className="text-xs font-semibold text-ink-700">{linguagem}</span>
+        <BotaoCopiar valor={codigo} alvoId={id} compacto />
+      </div>
+      <pre id={id} className="text-xs leading-relaxed p-4 overflow-x-auto mono">
+        {codigo}
+      </pre>
+    </div>
   );
 }

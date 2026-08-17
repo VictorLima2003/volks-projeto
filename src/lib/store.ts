@@ -17,6 +17,7 @@ import {
   SESSOES_SEED,
 } from "./seed";
 import { decidir, montarFatos } from "./engine";
+import { gerarHistorico } from "./mock-historico";
 
 // --------------------------------------------------------------------------
 // Store singleton em memória (reset a cada restart do server)
@@ -36,11 +37,23 @@ declare global {
 }
 
 function initialState(): State {
+  const pesquisas: Pesquisa[] = JSON.parse(JSON.stringify(PESQUISAS_SEED));
+
+  /*
+   * O histórico sintético entra junto com o seed, e não no lugar dele.
+   *
+   * As três sessões escritas à mão continuam valendo: são as que os CPFs de
+   * demonstração encontram, e trocá-las por dado gerado quebraria a jornada de
+   * teste que a documentação manda percorrer. O que o gerador acrescenta é
+   * volume — sem ele, "série temporal" é um ponto e "distribuição" é uma barra.
+   */
+  const historico = gerarHistorico(pesquisas);
+
   return {
     hooks: JSON.parse(JSON.stringify(HOOKS_SEED)),
-    pesquisas: JSON.parse(JSON.stringify(PESQUISAS_SEED)),
-    sessoes: [...SESSOES_SEED],
-    pedidos: [...PEDIDOS_SEED],
+    pesquisas,
+    sessoes: [...SESSOES_SEED, ...historico.sessoes],
+    pedidos: [...PEDIDOS_SEED, ...historico.pedidos],
   };
 }
 

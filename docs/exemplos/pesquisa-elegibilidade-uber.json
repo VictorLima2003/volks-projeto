@@ -1,0 +1,396 @@
+{
+  "formato": "pesquisa-volkswagen@1",
+  "pesquisa": {
+    "nome": "Elegibilidade Volkswagen para motoristas de aplicativo",
+    "descricao": "Pesquisa demonstrativa para validar, em tempo real, se um motorista de aplicativo atende aos criterios comerciais de uma condicao especial Volkswagen.",
+    "chamada": "Consulte sua condicao Volkswagen para motorista de aplicativo",
+    "apresentacao": {
+      "fundo": "persianas",
+      "entrada": "convite",
+      "rotuloDoConvite": "Verificar minha condicao"
+    },
+    "blocos": [
+      {
+        "id": "q_cpf",
+        "bloco": "pergunta",
+        "campo": "cpf",
+        "rotulo": "Informe seu CPF",
+        "ajuda": "Usamos este dado para localizar seu cadastro na base do parceiro.",
+        "tipo": "cpf",
+        "obrigatoria": true
+      },
+      {
+        "id": "q_consentimento",
+        "bloco": "pergunta",
+        "campo": "consentimento",
+        "rotulo": "Voce autoriza a consulta dos seus dados de atividade como motorista?",
+        "ajuda": "Sem esta autorizacao, nenhuma fonte externa sera consultada.",
+        "tipo": "consentimento",
+        "obrigatoria": true
+      },
+      {
+        "id": "cond_sem_consentimento",
+        "bloco": "condicional",
+        "rotulo": "Motorista nao autorizou consulta",
+        "condicao": {
+          "fato": "resposta.consentimento",
+          "operador": "falsy"
+        },
+        "entao": [
+          {
+            "id": "fim_sem_consentimento",
+            "bloco": "feedback",
+            "tipo": "info",
+            "titulo": "Nao conseguimos verificar agora",
+            "mensagem": "Sem a autorizacao, a Volkswagen nao consulta dados externos. Voce pode voltar e autorizar quando quiser.",
+            "mostrarNumeros": false,
+            "proximoPasso": {
+              "titulo": "Proximo passo",
+              "texto": "Se preferir, fale com uma concessionaria Volkswagen para seguir por analise manual."
+            }
+          }
+        ],
+        "senao": [
+          {
+            "id": "consulta_uber",
+            "bloco": "consulta",
+            "rotulo": "Consultar base Uber",
+            "hookId": "fonte_uber_elegibilidade",
+            "argumentos": {
+              "documento": "cpf"
+            },
+            "obrigatoria": false
+          },
+          {
+            "id": "cond_encontrado_na_uber",
+            "bloco": "condicional",
+            "rotulo": "CPF encontrado na base Uber",
+            "condicao": {
+              "fato": "uber.encontrado",
+              "operador": "truthy"
+            },
+            "entao": [
+              {
+                "id": "cond_conta_ativa",
+                "bloco": "condicional",
+                "rotulo": "Conta Uber ativa",
+                "condicao": {
+                  "fato": "uber.status",
+                  "operador": "=",
+                  "valor": "ativo"
+                },
+                "entao": [
+                  {
+                    "id": "cond_criterios_minimos",
+                    "bloco": "condicional",
+                    "rotulo": "Atingiu criterios minimos",
+                    "condicao": {
+                      "fato": "",
+                      "operador": "truthy",
+                      "todas": [
+                        {
+                          "fato": "uber.mesesUber",
+                          "operador": ">=",
+                          "valor": 6
+                        },
+                        {
+                          "fato": "uber.corridas",
+                          "operador": ">=",
+                          "valor": 500
+                        },
+                        {
+                          "fato": "uber.rating",
+                          "operador": ">=",
+                          "valor": 4.7
+                        }
+                      ]
+                    },
+                    "entao": [
+                      {
+                        "id": "q_modelo",
+                        "bloco": "pergunta",
+                        "campo": "modelo",
+                        "rotulo": "Qual modelo Volkswagen te interessa?",
+                        "tipo": "opcao",
+                        "opcoes": [
+                          "T-Cross",
+                          "Nivus",
+                          "Polo Track",
+                          "Virtus",
+                          "Ainda estou decidindo"
+                        ],
+                        "obrigatoria": true
+                      },
+                      {
+                        "id": "q_concessionaria",
+                        "bloco": "pergunta",
+                        "campo": "concessionaria",
+                        "rotulo": "Qual concessionaria voce prefere?",
+                        "tipo": "opcao",
+                        "opcoes": [
+                          "VW Barra Funda - SP",
+                          "VW Ipiranga - SP",
+                          "VW Barra - RJ",
+                          "VW Savassi - BH",
+                          "Outra"
+                        ],
+                        "obrigatoria": true
+                      },
+                      {
+                        "id": "q_canal",
+                        "bloco": "pergunta",
+                        "campo": "canalContato",
+                        "rotulo": "Qual o melhor canal para contato?",
+                        "tipo": "opcao",
+                        "opcoes": [
+                          "WhatsApp",
+                          "Telefone",
+                          "E-mail"
+                        ],
+                        "obrigatoria": true
+                      },
+                      {
+                        "id": "fim_pre_aprovado",
+                        "bloco": "feedback",
+                        "tipo": "sucesso",
+                        "titulo": "Sua condicao pode ser liberada",
+                        "mensagem": "Encontramos seu cadastro e os criterios minimos foram atendidos. Um vendedor Volkswagen pode seguir com a proposta.",
+                        "mostrarNumeros": true,
+                        "proximoPasso": {
+                          "titulo": "Proximo passo",
+                          "texto": "A concessionaria escolhida recebe os dados da submissao e continua o atendimento."
+                        }
+                      }
+                    ],
+                    "senao": [
+                      {
+                        "id": "fim_nao_atingiu_minimos",
+                        "bloco": "feedback",
+                        "tipo": "warning",
+                        "titulo": "Ainda nao atingiu os criterios",
+                        "mensagem": "Seu cadastro foi encontrado, mas algum criterio minimo de atividade ainda nao foi atingido.",
+                        "mostrarNumeros": true,
+                        "proximoPasso": {
+                          "titulo": "Quando tentar de novo",
+                          "texto": "Voce pode retornar quando completar os criterios exigidos pela campanha."
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "senao": [
+                  {
+                    "id": "fim_conta_irregular",
+                    "bloco": "feedback",
+                    "tipo": "error",
+                    "titulo": "Cadastro precisa ser regularizado",
+                    "mensagem": "Encontramos seu CPF na base, mas a conta nao esta ativa no momento.",
+                    "mostrarNumeros": true,
+                    "proximoPasso": {
+                      "titulo": "Proximo passo",
+                      "texto": "Regularize sua situacao na plataforma parceira antes de tentar novamente."
+                    }
+                  }
+                ]
+              }
+            ],
+            "senao": [
+              {
+                "id": "q_email_analise",
+                "bloco": "pergunta",
+                "campo": "emailAnalise",
+                "rotulo": "Qual e-mail devemos usar para retorno?",
+                "ajuda": "Como nao encontramos seu CPF na base, a central pode conferir manualmente.",
+                "tipo": "email",
+                "obrigatoria": true
+              },
+              {
+                "id": "fim_analise_manual",
+                "bloco": "feedback",
+                "tipo": "warning",
+                "titulo": "Vamos analisar manualmente",
+                "mensagem": "Nao encontramos seu CPF na base compartilhada. A central Volkswagen pode conferir o caso e retornar pelo e-mail informado.",
+                "mostrarNumeros": false,
+                "proximoPasso": {
+                  "titulo": "Prazo de retorno",
+                  "texto": "A central recebe a submissao e faz a validacao manual."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "desfechos": [
+      {
+        "id": "elegivel_uber",
+        "rotulo": "Elegivel",
+        "efeito": "libera",
+        "tom": "go",
+        "titulo": "{nome}voce esta elegivel.",
+        "texto": "Seu perfil atende aos criterios da condicao especial Volkswagen para motoristas de aplicativo.",
+        "proximoPasso": {
+          "titulo": "Proximo passo",
+          "texto": "A concessionaria escolhida pode continuar o atendimento com os dados ja validados."
+        }
+      },
+      {
+        "id": "nao_elegivel_minimos",
+        "rotulo": "Nao atingiu criterios minimos",
+        "efeito": "recusa",
+        "tom": "stop",
+        "titulo": "{nome}ainda nao atingiu os criterios.",
+        "texto": "Seu cadastro foi encontrado, mas ainda nao cumpre todos os requisitos da campanha."
+      },
+      {
+        "id": "conta_irregular",
+        "rotulo": "Conta irregular",
+        "efeito": "recusa",
+        "tom": "stop",
+        "titulo": "{nome}precisamos de uma conta ativa.",
+        "texto": "A conta localizada na base parceira nao esta ativa para esta condicao."
+      },
+      {
+        "id": "analise_manual",
+        "rotulo": "Analise manual",
+        "efeito": "segura",
+        "tom": "espera",
+        "titulo": "{nome}vamos analisar manualmente.",
+        "texto": "Nao encontramos o CPF na base parceira. A central pode conferir o caso."
+      },
+      {
+        "id": "sem_consentimento",
+        "rotulo": "Sem consentimento",
+        "efeito": "recusa",
+        "tom": "neutro",
+        "titulo": "Nao foi possivel consultar.",
+        "texto": "Sem autorizacao, os dados externos nao sao consultados."
+      },
+      {
+        "id": "rating_revisao",
+        "rotulo": "Revisar avaliacao",
+        "efeito": "segura",
+        "tom": "espera",
+        "titulo": "{nome}vamos revisar seu cadastro.",
+        "texto": "O cadastro existe, mas a avaliacao exige uma revisao antes da liberacao."
+      }
+    ],
+    "descricaoDasRegras": "Criterios demonstrativos: cadastro encontrado, conta ativa, minimo de 6 meses, 500 corridas e rating 4.7.",
+    "regras": [
+      {
+        "id": "r_sem_consentimento",
+        "nome": "Sem consentimento",
+        "condicao": {
+          "fato": "resposta.consentimento",
+          "operador": "falsy"
+        },
+        "resultado": "sem_consentimento",
+        "motivo": "O motorista nao autorizou a consulta dos dados externos.",
+        "proximaAcao": "Nao consultar fontes externas. Oferecer atendimento manual, se aplicavel.",
+        "prioridade": 5
+      },
+      {
+        "id": "r_nao_encontrado",
+        "nome": "CPF nao encontrado na base Uber",
+        "condicao": {
+          "fato": "uber.encontrado",
+          "operador": "falsy"
+        },
+        "resultado": "analise_manual",
+        "motivo": "O CPF nao foi encontrado na base compartilhada pelo parceiro.",
+        "proximaAcao": "Encaminhar para validacao manual da central.",
+        "prioridade": 10
+      },
+      {
+        "id": "r_conta_nao_ativa",
+        "nome": "Conta Uber nao ativa",
+        "condicao": {
+          "fato": "uber.status",
+          "operador": "!=",
+          "valor": "ativo"
+        },
+        "resultado": "conta_irregular",
+        "motivo": "A conta localizada nao esta ativa.",
+        "proximaAcao": "Orientar regularizacao na plataforma parceira.",
+        "prioridade": 20
+      },
+      {
+        "id": "r_meses_insuficientes",
+        "nome": "Menos de 6 meses de atividade",
+        "condicao": {
+          "fato": "uber.mesesUber",
+          "operador": "<",
+          "valor": 6
+        },
+        "resultado": "nao_elegivel_minimos",
+        "motivo": "A campanha exige pelo menos 6 meses de atividade.",
+        "proximaAcao": "Motorista pode retornar quando completar o tempo minimo.",
+        "prioridade": 30
+      },
+      {
+        "id": "r_corridas_insuficientes",
+        "nome": "Menos de 500 corridas",
+        "condicao": {
+          "fato": "uber.corridas",
+          "operador": "<",
+          "valor": 500
+        },
+        "resultado": "nao_elegivel_minimos",
+        "motivo": "A campanha exige pelo menos 500 corridas concluidas.",
+        "proximaAcao": "Motorista pode retornar ao atingir o volume minimo.",
+        "prioridade": 40
+      },
+      {
+        "id": "r_rating_baixo",
+        "nome": "Avaliacao abaixo do minimo",
+        "condicao": {
+          "fato": "uber.rating",
+          "operador": "<",
+          "valor": 4.7
+        },
+        "resultado": "rating_revisao",
+        "motivo": "A avaliacao do motorista esta abaixo do minimo demonstrativo.",
+        "proximaAcao": "Encaminhar para revisao antes da liberacao.",
+        "prioridade": 50
+      },
+      {
+        "id": "r_elegivel",
+        "nome": "Elegivel para condicao Volkswagen",
+        "condicao": {
+          "fato": "",
+          "operador": "truthy",
+          "todas": [
+            {
+              "fato": "uber.encontrado",
+              "operador": "truthy"
+            },
+            {
+              "fato": "uber.status",
+              "operador": "=",
+              "valor": "ativo"
+            },
+            {
+              "fato": "uber.mesesUber",
+              "operador": ">=",
+              "valor": 6
+            },
+            {
+              "fato": "uber.corridas",
+              "operador": ">=",
+              "valor": 500
+            },
+            {
+              "fato": "uber.rating",
+              "operador": ">=",
+              "valor": 4.7
+            }
+          ]
+        },
+        "resultado": "elegivel_uber",
+        "motivo": "O motorista atende aos criterios demonstrativos da campanha.",
+        "proximaAcao": "Liberar continuidade do atendimento comercial na concessionaria escolhida.",
+        "prioridade": 100
+      }
+    ]
+  }
+}
