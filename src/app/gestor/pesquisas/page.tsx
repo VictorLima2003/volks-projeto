@@ -6,6 +6,7 @@ import { podePropor } from "@/lib/identidade";
 import { exigirUsuarioNaTela } from "@/lib/identidade-server";
 import { listarHooks, listarPedidos, listarPesquisas, listarSessoes } from "@/lib/store";
 import Link from "next/link";
+import { BuscaDePesquisas } from "./busca";
 import { ImportarPesquisa } from "./importar-pesquisa";
 
 export const dynamic = "force-dynamic";
@@ -19,16 +20,67 @@ export const dynamic = "force-dynamic";
  * manter duas entidades obrigava a criar dois cadastros para publicar uma
  * pergunta.
  */
-export default function Pesquisas() {
-  const pesquisas = listarPesquisas();
+/** Quantas linhas por página. */
+const POR_PAGINA = 20;
+
+/**
+ * Sem acento e sem caixa, dos dois lados.
+ *
+ * Buscar "satisfacao" tem que achar "Satisfação": quem digita rápido não põe
+ * acento, e uma busca que exige o acento certo é uma busca que não acha nada
+ * justamente quando mais se precisa dela.
+ */
+function achatar(t: string) {
+  return t
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
+
+export default function Pesquisas({
+  searchParams,
+}: {
+  searchParams: { busca?: string; status?: string; pagina?: string };
+}) {
+  const todas = listarPesquisas();
   const sessoes = listarSessoes();
   const pedidos = listarPedidos();
 
+  const busca = searchParams.busca?.trim() ?? "";
+  const termo = achatar(busca);
+
+  /*
+   * A busca olha nome, descrição e chamada — os três textos que uma pessoa
+   * lembraria. O id fica de fora de propósito: ninguém decora `pesq_mswqr19n`, e
+   * incluí-lo faria uma busca por "pesq" devolver a lista inteira.
+   */
+  const filtradas = todas.filter((p) => {
+    if (searchParams.status && p.status !== searchParams.status) return false;
+    if (!termo) return true;
+    return achatar(`${p.nome} ${p.descricao ?? ""} ${p.chamada ?? ""}`).includes(termo);
+  });
+
+  const paginas = Math.max(1, Math.ceil(filtradas.length / POR_PAGINA));
+  /* Página fora do intervalo cai na última que existe, e não numa tela vazia:
+     acontece toda vez que alguém volta a um link salvo depois de a lista
+     encolher. */
+  const pagina = Math.min(Math.max(1, Number(searchParams.pagina) || 1), paginas);
+  const pesquisas = filtradas.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
+
+  /** Preserva o recorte ao trocar um parâmetro só. */
+  const comParametro = (mudanca: Record<string, string | undefined>) => {
+    const q = new URLSearchParams();
+    const base = { busca: busca || undefined, status: searchParams.status, ...mudanca };
+    for (const [k, v] of Object.entries(base)) if (v) q.set(k, v);
+    const s = q.toString();
+    return s ? `/gestor/pesquisas?${s}` : "/gestor/pesquisas";
+  };
+
   const kpis = {
-    ativas: pesquisas.filter((p) => p.status === "ativa").length,
+    ativas: todas.filter((p) => p.status === "ativa").length,
     sessoes: sessoes.length,
     pedidos: pedidos.length,
-    pendentes: pesquisas.reduce(
+    pendentes: todas.reduce(
       (a, p) => a + p.versoes.filter((r) => r.status === "em_revisao").length,
       0,
     ),
@@ -86,11 +138,53 @@ export default function Pesquisas() {
         <Stat label="Fontes de dado" value={listarHooks().length} hint="na biblioteca" />
       </div>
 
-      {pesquisas.length === 0 && (
+      {todas.length === 0 ? (
         <Card className="text-base text-ink-700">
           Nenhuma pesquisa ainda. Crie a primeira e o construtor abre em seguida.
         </Card>
-      )}
+      ) : (
+        <>
+        {/* A busca e os filtros só aparecem quando há o que procurar: numa lista
+            de três, eles ocupariam mais altura do que a lista inteira. */}
+        {todas.length > POR_PAGINA / 2 && (
+          <div className="mb-5 flex flex-wrap items-center gap-3">
+            <BuscaDePesquisas inicial={busca} total={todas.length} />
+            <div className="flex flex-wrap items-center gap-2">
+              {[
+                { valor: undefined, rotulo: "Todas" },
+                { valor: "ativa", rotulo: "no ar" },
+                { valor: "rascunho", rotulo: "rascunho" },
+                { valor: "pausada", rotulo: "pausada" },
+                { valor: "encerrada", rotulo: "encerrada" },
+              ].map((f) => {
+                const ativo = (searchParams.status ?? undefined) === f.valor;
+                return (
+                  <Link
+                    key={f.rotulo}
+                    href={comParametro({ status: f.valor, pagina: undefined })}
+                    className={`inline-flex h-9 items-center rounded-full px-4 text-sm transition ${
+                      ativo
+                        ? "bg-vw-deep text-ink-0"
+                        : "border hairline text-ink-800 hover:border-vw-deep hover:text-vw-deep"
+                    }`}
+                  >
+                    {f.rotulo}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {filtradas.length === 0 && (
+          <Card className="text-base text-ink-700">
+            Nada encontrado para este recorte.{" "}
+            <Link href="/gestor/pesquisas" className="underline hover:no-underline text-vw-deep">
+              Ver todas as {todas.length}
+            </Link>
+            .
+          </Card>
+        )}
 
       {/*
        * Lista, e não grade de cartões.
@@ -209,6 +303,67 @@ export default function Pesquisas() {
           );
         })}
       </div>
+
+      {/*
+       * Paginação só quando passa de uma página, e sempre com o total ao lado.
+       *
+       * "1–20 de 63" é o que responde a pergunta que a paginação levanta —
+       * quanto falta —, e sem ele os números de página viram um controle que se
+       * clica no escuro.
+       */}
+      {paginas > 1 && (
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <span className="text-sm text-ink-600">
+            {(pagina - 1) * POR_PAGINA + 1}–{Math.min(pagina * POR_PAGINA, filtradas.length)} de{" "}
+            {filtradas.length}
+          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <PassoDePagina
+              href={comParametro({ pagina: String(pagina - 1) })}
+              desativado={pagina === 1}
+            >
+              ← Anterior
+            </PassoDePagina>
+            <span className="text-sm text-ink-700 px-1">
+              {pagina} de {paginas}
+            </span>
+            <PassoDePagina
+              href={comParametro({ pagina: String(pagina + 1) })}
+              desativado={pagina === paginas}
+            >
+              Próxima →
+            </PassoDePagina>
+          </div>
+        </div>
+      )}
+        </>
+      )}
     </ShellGestor>
+  );
+}
+
+/**
+ * Um passo da paginação.
+ *
+ * No limite ele vira `span`, e não um link desabilitado: link sem destino
+ * continua recebendo foco pelo teclado e leva a lugar nenhum.
+ */
+function PassoDePagina({
+  href,
+  desativado,
+  children,
+}: {
+  href: string;
+  desativado: boolean;
+  children: React.ReactNode;
+}) {
+  const forma = "inline-flex h-9 items-center rounded-full border hairline px-4 text-sm transition";
+  if (desativado) {
+    return <span className={`${forma} text-ink-600 opacity-40`}>{children}</span>;
+  }
+  return (
+    <Link href={href} className={`${forma} text-ink-800 hover:border-vw-deep hover:text-vw-deep`}>
+      {children}
+    </Link>
   );
 }
